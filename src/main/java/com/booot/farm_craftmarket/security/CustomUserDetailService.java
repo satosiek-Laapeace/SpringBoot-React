@@ -1,4 +1,7 @@
 package com.booot.farm_craftmarket.security;
+import org.springframework.stereotype.Service;
 
-public class CustomUserDetailService {
+@Service
+public class CustomUserDetailService implements UserDetailsService {
+
 }

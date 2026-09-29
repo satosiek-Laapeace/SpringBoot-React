@@ -20,5 +20,5 @@ public class JwtService {
         return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(User){}
+    public String generateToken(UserDetails userDetails){}
 }

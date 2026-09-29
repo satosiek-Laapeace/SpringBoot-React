@@ -1,4 +1,4 @@
-package com.booot.farm_craftmarket.enums;
+package com.booot.farm_craftmarket.enums.orders;
 
 public enum OrderStatus {
     PENDING,

@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class FarmCraftMarketApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(FarmCraftMarketApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(FarmCraftMarketApplication.class, args);
+    }
 
 }

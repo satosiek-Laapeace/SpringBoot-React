@@ -1,4 +1,4 @@
-package com.booot.farm_craftmarket.payments;
+package com.booot.farm_craftmarket.enums.payments;
 
 public enum PaymentStatus {
     PENDING,
