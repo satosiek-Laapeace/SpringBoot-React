@@ -6,7 +6,8 @@ import { Pagination } from '../../components/common/Pagination';
 import { usePagination } from '../../hooks/usePagination';
 import { TableFilters } from '../../components/common/TableFilters';
 
-const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'DELIVERED', 'CANCELLED'];
+const ORDER_STATUS_SEQUENCE = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const ORDER_STATUSES = ORDER_STATUS_SEQUENCE;
 
 const STATUS_STYLES = {
   PENDING: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300',
@@ -15,6 +16,11 @@ const STATUS_STYLES = {
   CANCELLED: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300',
   PROCESSING: 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300',
   SHIPPED: 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300',
+};
+
+const statusPriority = status => {
+  const index = ORDER_STATUS_SEQUENCE.indexOf(String(status || 'PENDING').toUpperCase());
+  return index === -1 ? ORDER_STATUS_SEQUENCE.length : index;
 };
 
 const orderStatus = order => order.status || 'PENDING';
@@ -61,13 +67,15 @@ export const OrdersManagementPage = () => {
     : ORDER_STATUSES.filter(status => status !== 'CANCELLED');
   const filteredOrders = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
-    return orders.filter(order => {
-      const status = orderStatus(order);
-      const matchesStatus = statusFilter === 'ALL' || status === statusFilter;
-      const matchesSearch = !query || [order.id, orderBuyer(order, t), orderDelivery(order, t), order.payment?.method, order.paymentMethod, status]
-        .some(value => String(value ?? '').toLocaleLowerCase().includes(query));
-      return matchesStatus && matchesSearch;
-    });
+    return [...orders]
+      .filter(order => {
+        const status = orderStatus(order);
+        const matchesStatus = statusFilter === 'ALL' || status === statusFilter;
+        const matchesSearch = !query || [order.id, orderBuyer(order, t), orderDelivery(order, t), order.payment?.method, order.paymentMethod, status]
+          .some(value => String(value ?? '').toLocaleLowerCase().includes(query));
+        return matchesStatus && matchesSearch;
+      })
+      .sort((a, b) => statusPriority(orderStatus(b)) - statusPriority(orderStatus(a)) || Number(b.id ?? 0) - Number(a.id ?? 0));
   }, [orders, search, statusFilter, t]);
   const orderPage = usePagination(filteredOrders);
 

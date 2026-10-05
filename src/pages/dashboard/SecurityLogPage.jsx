@@ -3,8 +3,6 @@ import {
   Activity,
   AlertTriangle,
   Download,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw,
   ShieldCheck,
   Users,
@@ -210,31 +208,57 @@ export const SecurityLogPage = () => {
           <div><h2 className="text-sm font-bold text-slate-900">{t('securityRecentEvents')}</h2><p className="mt-1 text-xs text-slate-500">{t('securityPageDescription')}</p></div>
           <span className="text-xs font-medium text-slate-500">{t('securityPage')} {totalPages ? page + 1 : 0} / {totalPages}</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-xs">
-            <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500"><tr>
-              {[t('securityTime'), t('securityEvent'), t('securityActor'), t('securityRequest'), t('securityStatus'), t('securityIp')].map(label => <th key={label} className="px-4 py-3 font-semibold">{label}</th>)}
-            </tr></thead>
-            <tbody className="divide-y divide-slate-100">
+
+        <div className="space-y-3 p-4 sm:p-5">
+          {loading ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">{t('securityLoading')}</div>
+          ) : entries.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">{error ? t('securityLoadError') : t('securityNoEventData')}</div>
+          ) : (
+            <div className="space-y-3">
               {entries.map(entry => {
                 const status = Number(entry.responseStatus);
-                return <tr key={entry.id} className="transition-colors hover:bg-emerald-50/60">
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">{entry.createdAt ? new Date(entry.createdAt).toLocaleString(language === 'km' ? 'km-KH' : 'en-US') : '—'}</td>
-                  <td className="px-4 py-3 font-semibold text-slate-800">{eventLabel(entry.eventType, t)}</td>
-                  <td className="px-4 py-3 text-slate-600">{entry.actorUsername || entry.actorId || '—'}{entry.actorRole ? <span className="ml-1 text-slate-400">({entry.actorRole})</span> : null}</td>
-                  <td className="max-w-[280px] px-4 py-3"><span className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">{entry.httpMethod || '—'}</span><span className="font-mono text-slate-600">{entry.requestPath || '—'}</span></td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 font-semibold ${status >= 500 ? 'bg-rose-100 text-rose-700' : status >= 400 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{status || '—'}</span></td>
-                  <td className="px-4 py-3 font-mono text-slate-500">{entry.clientIp || '—'}</td>
-                </tr>;
+                return (
+                  <article key={entry.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 transition-colors hover:border-emerald-200 hover:bg-emerald-50/40">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          <span className="font-medium text-slate-700">{eventLabel(entry.eventType, t)}</span>
+                          <span className="rounded-full bg-slate-200 px-2 py-0.5 font-mono text-[10px] text-slate-600">{entry.httpMethod || '—'}</span>
+                          <span className="font-mono text-[10px] text-slate-500">{entry.createdAt ? new Date(entry.createdAt).toLocaleString(language === 'km' ? 'km-KH' : 'en-US') : '—'}</span>
+                        </div>
+                        <p className="mt-2 truncate font-mono text-xs text-slate-600" title={entry.requestPath || '—'}>{entry.requestPath || '—'}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 md:justify-end">
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${status >= 500 ? 'bg-rose-100 text-rose-700' : status >= 400 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {status || '—'}
+                        </span>
+                        <span className="font-mono text-[10px] text-slate-500">{entry.clientIp || '—'}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3 text-[11px] text-slate-500">
+                      <span>{entry.actorUsername || entry.actorId || '—'}{entry.actorRole ? <span className="ml-1 text-slate-400">({entry.actorRole})</span> : null}</span>
+                      <span>{entry.responseStatus ? `${t('securityStatus')} ${entry.responseStatus}` : t('securityNoStatus')}</span>
+                    </div>
+                  </article>
+                );
               })}
-              {!loading && entries.length === 0 && <tr><td colSpan="6" className="px-4 py-12 text-center text-sm text-slate-500">{error ? t('securityLoadError') : t('securityNoEventData')}</td></tr>}
-              {loading && <tr><td colSpan="6" className="px-4 py-12 text-center text-sm text-slate-500">{t('securityLoading')}</td></tr>}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
+
         <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-5">
           <span className="text-xs text-slate-500">{totalElements.toLocaleString()} {t('securityEvents')}</span>
-          <div className="flex gap-2"><button type="button" aria-label={t('securityPrevious')} onClick={() => setPage(value => Math.max(0, value - 1))} disabled={page === 0 || loading} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button><button type="button" aria-label={t('securityNext')} onClick={() => setPage(value => Math.min(totalPages - 1, value + 1))} disabled={page >= totalPages - 1 || loading} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:opacity-40"><ChevronRight className="h-4 w-4" /></button></div>
+          <div className="flex gap-2">
+            <button type="button" aria-label={t('securityPrevious')} onClick={() => setPage(value => Math.max(0, value - 1))} disabled={page === 0 || loading} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:opacity-40">
+              <RefreshCw className="h-4 w-4 rotate-180" />
+            </button>
+            <button type="button" aria-label={t('securityNext')} onClick={() => setPage(value => Math.min(totalPages - 1, value + 1))} disabled={page >= totalPages - 1 || loading} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:opacity-40">
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </section>
 

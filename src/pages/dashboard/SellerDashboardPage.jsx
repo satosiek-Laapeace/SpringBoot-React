@@ -34,6 +34,17 @@ const getStatusLabel = (status, t) => ({
   CANCELLED: t('orderCancelled'),
 }[status] ?? status);
 
+const SELLER_STATUS_STYLES = {
+  PENDING: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300',
+  CONFIRMED: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300',
+  PROCESSING: 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300',
+  SHIPPED: 'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300',
+  DELIVERED: 'border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-300',
+  CANCELLED: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
+};
+
+const getStatusBadgeClass = (status) => SELLER_STATUS_STYLES[String(status ?? 'PENDING').toUpperCase()] ?? 'border-slate-200 bg-slate-100 text-slate-700';
+
 const formatCurrency = (amount, language) => new Intl.NumberFormat(
   language === 'km' ? 'km-KH' : 'en-US',
   { style: 'currency', currency: 'USD', maximumFractionDigits: 2 },
@@ -214,7 +225,11 @@ export const SellerDashboardPage = () => {
                         <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-300">#{order.id}</td>
                         <td className="max-w-40 truncate px-5 py-3.5 font-medium text-slate-700 dark:text-slate-200">{getOrderBuyer(order)}</td>
                         <td className="whitespace-nowrap px-5 py-3.5 font-semibold text-slate-900 dark:text-white">{formatCurrency(getOrderTotal(order, sellerProductIds), language)}</td>
-                        <td className="whitespace-nowrap px-5 py-3.5 text-xs font-semibold text-slate-600 dark:text-slate-300">{getStatusLabel(status, t)}</td>
+                        <td className="whitespace-nowrap px-5 py-3.5">
+                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${getStatusBadgeClass(status)}`}>
+                            {getStatusLabel(status, t)}
+                          </span>
+                        </td>
                       </tr>
                     );
                   })}
