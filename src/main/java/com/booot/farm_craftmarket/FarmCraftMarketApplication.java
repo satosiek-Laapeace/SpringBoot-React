@@ -9,5 +9,4 @@ public class FarmCraftMarketApplication {
     public static void main(String[] args) {
         SpringApplication.run(FarmCraftMarketApplication.class, args);
     }
-
 }

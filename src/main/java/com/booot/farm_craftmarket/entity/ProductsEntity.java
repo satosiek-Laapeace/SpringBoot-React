@@ -2,7 +2,18 @@ package com.booot.farm_craftmarket.entity;
 
 import java.math.BigDecimal;
 
-import jakarta.persistence.*;
+import org.hibernate.annotations.SQLRestriction;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,6 +25,7 @@ import lombok.ToString;
         @Index(name = "idx_products_seller_id", columnList = "seller_id"),
         @Index(name = "idx_products_category_id", columnList = "category_id")
 })
+@SQLRestriction("is_deleted = false")
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
@@ -22,12 +34,6 @@ public class ProductsEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "seller_id", nullable = false)
-    private Long sellerId;
-
-    @Column(name = "category_id")
-    private Long categoryId;
 
     @Column(nullable = false)
     private String name;
@@ -49,16 +55,18 @@ public class ProductsEntity {
     @Column(name = "public_id")
     private String publicId;
 
+    @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
+    private boolean deleted;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seller_id", insertable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "seller_id", nullable = false)
     private UserEntity seller;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", insertable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
     private CategoriesEntity category;
 }

@@ -1,25 +1,35 @@
 package com.booot.farm_craftmarket.mapper;
 
-import com.booot.farm_craftmarket.dto.response.OrderItemsResponseDto;
-import com.booot.farm_craftmarket.entity.OrderEntity;
+import java.math.BigDecimal;
+
 import org.springframework.stereotype.Component;
+
+import com.booot.farm_craftmarket.dto.response.OrderItemsResponseDto;
+import com.booot.farm_craftmarket.entity.OrderItemEntity;
 
 @Component
 public class OrderItemMapper {
 
-    public OrderItemsResponseDto toOrderItemsResponseDto(OrderEntity orderEntity) {
-        if (orderEntity == null) {
+    public OrderItemsResponseDto toOrderItemsResponseDto(OrderItemEntity item) {
+        if (item == null) {
             return null;
         }
-        OrderItemsResponseDto orderItemsResponseDto = new OrderItemsResponseDto();
-        orderItemsResponseDto.setId(orderEntity.getId());
-        orderItemsResponseDto.setOrderId(orderItemsResponseDto.getOrderId());
-        orderItemsResponseDto.setProductId(orderItemsResponseDto.getProductId());
-        orderItemsResponseDto.setProductName(orderItemsResponseDto.getProductName());
-        orderItemsResponseDto.setQuantity(orderItemsResponseDto.getQuantity());
-        orderItemsResponseDto.setPriceAtPurchase(orderItemsResponseDto.getPriceAtPurchase());
-        orderItemsResponseDto.setSubTotal(orderItemsResponseDto.getSubTotal());
 
-        return orderItemsResponseDto;
+        OrderItemsResponseDto dto = new OrderItemsResponseDto();
+        dto.setId(item.getId());
+        dto.setOrderId(item.getOrder() == null ? null : item.getOrder().getId());
+        dto.setQuantity(item.getQuantity());
+        dto.setPriceAtPurchase(item.getPriceAtPurchase());
+
+        if (item.getProduct() != null) {
+            dto.setProductId(item.getProduct().getId());
+            dto.setProductName(item.getProduct().getName());
+        }
+
+        if (item.getPriceAtPurchase() != null && item.getQuantity() != null) {
+            dto.setSubTotal(item.getPriceAtPurchase()
+                    .multiply(BigDecimal.valueOf(item.getQuantity())));
+        }
+        return dto;
     }
 }

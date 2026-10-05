@@ -1,4 +1,4 @@
-package com.booot.farm_craftmarket.config;
+package com.booot.farm_craftmarket.configuration;
 
 import java.io.IOException;
 import java.util.Map;
@@ -14,6 +14,9 @@ import com.cloudinary.utils.ObjectUtils;
 @Component
 public class CloudService {
 
+    private static final String DEFAULT_FOLDER = "farm_craftmarket";
+    private static final String ICON_FOLDER = "farm_craftmarket/categories";
+
     private final Cloudinary cloudinary;
 
     public CloudService(Cloudinary cloudinary) {
@@ -21,7 +24,7 @@ public class CloudService {
     }
 
     public Map<?, ?> upload(MultipartFile file) {
-        return upload(file);
+        return upload(file, DEFAULT_FOLDER);
     }
 
     public Map<?, ?> upload(MultipartFile file, String folder) {
@@ -38,7 +41,7 @@ public class CloudService {
     }
 
     public Map<?, ?> uploadIcon(MultipartFile icon) {
-        return upload(icon);
+        return upload(icon, ICON_FOLDER);
     }
 
     public Map<?, ?> delete(String publicId) {

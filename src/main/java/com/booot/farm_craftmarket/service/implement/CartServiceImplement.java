@@ -48,9 +48,9 @@ public class CartServiceImplement implements CartService {
     }
 
     @Override
-    public CartResponseDto addToCart(Long userId, CartRequestDto request) {
+    public CartResponseDto addToCart(Long buyerId, CartRequestDto request) {
         ProductsEntity product = findProduct(request.getProductId());
-        CartEntity cart = getOrCreateCart(userId);
+        CartEntity cart = getOrCreateCart(buyerId);
 
         CartItemEntity item = cartItemRepository
                 .findByCartIdAndProductId(cart.getId(), product.getId())
@@ -72,8 +72,8 @@ public class CartServiceImplement implements CartService {
     }
 
     @Override
-    public CartResponseDto updateItem(Long userId, CartRequestDto request) {
-        CartEntity cart = findCart(userId);
+    public CartResponseDto updateItem(Long buyerId, CartRequestDto request) {
+        CartEntity cart = findCart(buyerId);
         CartItemEntity item = findItem(cart.getId(), request.getProductId());
         ProductsEntity product = findProduct(request.getProductId());
 
@@ -86,8 +86,8 @@ public class CartServiceImplement implements CartService {
     }
 
     @Override
-    public CartResponseDto removeItem(Long userId, Long productId) {
-        CartEntity cart = findCart(userId);
+    public CartResponseDto removeItem(Long buyerId, Long productId) {
+        CartEntity cart = findCart(buyerId);
         CartItemEntity item = findItem(cart.getId(), productId);
 
         cartItemRepository.delete(item);
@@ -104,7 +104,7 @@ public class CartServiceImplement implements CartService {
     private CartEntity getOrCreateCart(Long buyerId) {
         return cartRepository.findByBuyerId(buyerId).orElseGet(() -> {
             CartEntity cart = new CartEntity();
-            cart.setUserId(buyerId);
+            cart.setBuyerId(buyerId);
             return cartRepository.save(cart);
         });
     }

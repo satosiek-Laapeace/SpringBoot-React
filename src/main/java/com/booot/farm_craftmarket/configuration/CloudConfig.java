@@ -1,14 +1,15 @@
-package com.booot.farm_craftmarket.config;
-
-import com.cloudinary.Cloudinary;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+package com.booot.farm_craftmarket.configuration;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@Configuration
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.cloudinary.Cloudinary;
+
+@Configuration("cloudinaryConfiguration")
 public class CloudConfig {
 
     @Value("${cloudinary.cloud-name}")
@@ -19,7 +20,7 @@ public class CloudConfig {
     @Value("${cloudinary.api-secret}")
     private String apiSecret;
 
-    @Bean
+    @Bean("cloudinaryClient")
     public Cloudinary cloudBinary() {
         Map<String, Object> cloud = new HashMap<>();
         cloud.put("cloud_name", cloudName);

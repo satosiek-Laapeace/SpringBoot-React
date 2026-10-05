@@ -1,14 +1,16 @@
 package com.booot.farm_craftmarket.entity;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
+import lombok.ToString;
 
 @Entity
-@Table(name = "orderItem")
+@Table(name = "order_item_tbl")
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
@@ -18,11 +20,17 @@ public class OrderItemEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_id", nullable = false)
-    private Long orderId;
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "order_id", nullable = false)
+    private OrderEntity order;
 
-    @Column(name = "product_id", nullable = false)
-    private Long productId;
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_id", nullable = false)
+    private ProductsEntity product;
 
     @Column(nullable = false)
     private Long quantity;
@@ -30,15 +38,11 @@ public class OrderItemEntity {
     @Column(name = "price_at_purchase", nullable = false, precision = 10, scale = 2)
     private BigDecimal priceAtPurchase;
 
-    @Column(name = "sub_total", nullable = false, precision = 10, scale = 2)
-    private BigDecimal subTotal;
+    public Long getOrderId() {
+        return order == null ? null : order.getId();
+    }
 
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", insertable = false, updatable = false)
-    private OrderEntity order;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false)
-    private ProductsEntity product;
+    public Long getProductId() {
+        return product == null ? null : product.getId();
+    }
 }

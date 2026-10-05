@@ -20,13 +20,13 @@ public class CartEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, unique = true)
-    private Long userId;
+    @Column(name = "buyer_id", nullable = false, unique = true)
+    private Long buyerId;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @JoinColumn(name = "buyer_id", insertable = false, updatable = false)
     private UserEntity user;
 
     @ToString.Exclude

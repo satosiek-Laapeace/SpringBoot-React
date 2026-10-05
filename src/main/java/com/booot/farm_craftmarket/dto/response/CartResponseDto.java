@@ -15,7 +15,7 @@ import java.util.List;
 public class CartResponseDto {
 
     private Long id;
-    private Long userId;
+    private Long buyerId;
 
     private List<CartItemsResponseDto> cartItems;
     private Long totalItems;

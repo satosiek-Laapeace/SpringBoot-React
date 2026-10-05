@@ -1,27 +1,28 @@
 package com.booot.farm_craftmarket.mapper;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.springframework.stereotype.Component;
 import com.booot.farm_craftmarket.dto.response.CartItemsResponseDto;
 import com.booot.farm_craftmarket.dto.response.CartResponseDto;
 import com.booot.farm_craftmarket.entity.CartEntity;
 import com.booot.farm_craftmarket.entity.CartItemEntity;
 import com.booot.farm_craftmarket.entity.ProductsEntity;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class CartMapper {
 
-    private final CartItemMapper cartItemMapper;
+        private final CartItemMapper cartItemMapper;
+        public CartMapper(CartItemMapper cartItemMapper){
+                this.cartItemMapper = cartItemMapper;
+        }
 
-    public CartResponseDto toDto(CartEntity cart,
-                                 List<CartItemEntity> items,
-                                 Map<Long, ProductsEntity> productsById) {
+        public CartResponseDto toDto(CartEntity cart,
+                                List<CartItemEntity> items,
+                                Map<Long, ProductsEntity> productsById) {
 
         List<CartItemsResponseDto> itemDto = items.stream()
                 .filter(item -> productsById.containsKey(item.getProductId())) // skip deleted products
@@ -38,18 +39,17 @@ public class CartMapper {
 
         return CartResponseDto.builder()
                 .id(cart.getId())
-                .userId(cart.getUserId())
+                .buyerId(cart.getBuyerId())
                 .cartItems(itemDto)
                 .totalItems(totalItems)
                 .totalAmount(totalAmount)
                 .build();
     }
 
-    /** Response for a user who has no cart yet. */
-    public CartResponseDto empty(Long userId) {
+    public CartResponseDto empty(Long buyerId) {
         return CartResponseDto.builder()
                 .id(null)
-                .userId(userId)
+                .buyerId(buyerId)
                 .cartItems(new ArrayList<>())
                 .totalItems(0L)
                 .totalAmount(BigDecimal.ZERO)

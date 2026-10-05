@@ -13,16 +13,16 @@ import java.util.Optional;
 @Repository
 public interface AddressRepository extends JpaRepository<AddressEntity, Long> {
 
-    List<AddressEntity> findByUserIdOrderByIsDefaultDescIdAsc(Long userId);
+    List<AddressEntity> findByBuyerIdOrderByIsDefaultDescIdAsc(Long buyerId);
 
-    Optional<AddressEntity> findByIdAndUserId(Long id, Long userId);
+    long countByBuyerId(Long buyerId);
 
-    long countByUserId(Long userId);
+    Optional<AddressEntity> findByIdAndBuyerId(Long id, Long buyerId);
 
-    Optional<AddressEntity> findFirstByUserIdOrderByIdAsc(Long userId);
+    Optional<AddressEntity> findFirstByBuyerIdOrderByIdAsc(Long buyerId);
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-
-    @Query("UPDATE AddressEntity a SET a.isDefault = false WHERE a.userId = :userId AND a.isDefault = true")
-    void clearDefault(@Param("userId") Long userId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update AddressEntity a set a.isDefault = false " +
+            "where a.buyerId = :buyerId and a.isDefault = true")
+    void clearDefault(@Param("buyerId") Long buyerId);
 }

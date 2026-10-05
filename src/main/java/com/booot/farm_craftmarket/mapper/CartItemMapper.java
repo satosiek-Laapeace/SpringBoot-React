@@ -11,8 +11,8 @@ import java.math.BigDecimal;
 public class CartItemMapper {
 
     public CartItemsResponseDto toDto(CartItemEntity item, ProductsEntity product) {
-        BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-
+        BigDecimal subTotal = product.getPrice()
+                .multiply(BigDecimal.valueOf(item.getQuantity()));
 
         return CartItemsResponseDto.builder()
                 .itemId(item.getId())

@@ -1,68 +1,69 @@
 package com.booot.farm_craftmarket.mapper;
 
-import com.booot.farm_craftmarket.dto.response.OrderItemsResponseDto;
-import com.booot.farm_craftmarket.dto.response.OrderResponseDto;
-import com.booot.farm_craftmarket.entity.OrderEntity;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.stereotype.Component;
+
+import com.booot.farm_craftmarket.dto.response.OrderItemsResponseDto;
+import com.booot.farm_craftmarket.dto.response.OrderResponseDto;
+import com.booot.farm_craftmarket.entity.OrderEntity;
+
 @Component
 public class OrderMapper {
+
+
+    private final OrderItemMapper orderItemMapper;
+    public OrderMapper(OrderItemMapper orderItemMapper){
+        this.orderItemMapper = orderItemMapper;
+    }
+
 
     public OrderResponseDto toOrderResponseDto(OrderEntity orderEntity) {
         if (orderEntity == null) {
             return null;
         }
 
-        OrderResponseDto orderResponseDto = new OrderResponseDto();
-        orderResponseDto.setId(orderResponseDto.getId());
-        orderResponseDto.setAddressId(orderResponseDto.getAddressId());
-        orderResponseDto.setBuyerId(orderResponseDto.getBuyerId());
-        orderResponseDto.setTotalAmount(orderResponseDto.getTotalAmount());
-        orderResponseDto.setDeliverySlot(orderResponseDto.getDeliverySlot());
-        orderResponseDto.setDeliveryTime(orderResponseDto.getDeliveryTime());
-        orderResponseDto.setCreatedAt(orderResponseDto.getCreatedAt());
+        OrderResponseDto dto = new OrderResponseDto();
+        dto.setId(orderEntity.getId());
+        dto.setBuyerId(orderEntity.getBuyerId());
+        if (orderEntity.getBuyer() != null) {
+            dto.setBuyerName(orderEntity.getBuyer().getDisplayName() != null
+                    ? orderEntity.getBuyer().getDisplayName()
+                    : orderEntity.getBuyer().getUsername());
+        }
+        dto.setAddressId(orderEntity.getAddressId());
+        dto.setTotalAmount(orderEntity.getTotalAmount());
+        dto.setDeliverySlot(orderEntity.getDeliverySlot());
+        dto.setDeliveryTime(orderEntity.getDeliveryTime());
+        dto.setCreatedAt(orderEntity.getCreatedAt());
 
         if (orderEntity.getStatus() != null) {
-            orderResponseDto.setStatus(orderEntity.getStatus().name());
+            dto.setStatus(orderEntity.getStatus().name());
         }
 
+        List<OrderItemsResponseDto> items = new ArrayList<>();
         if (orderEntity.getItems() != null) {
-            List<OrderItemsResponseDto> itemsList = new ArrayList<>();
-            orderEntity.getItems().forEach((itemEntity) -> {
-                OrderItemsResponseDto itemsResponseDto = new OrderItemsResponseDto();
-                itemsResponseDto.setId(itemEntity.getId());
-                itemsResponseDto.setOrderId(itemEntity.getOrderId());
-                itemsResponseDto.setProductId(itemEntity.getProductId());
-                itemsResponseDto.setQuantity(itemEntity.getProduct().getStockQuantity()); // fixed: was reading product stock
-                itemsResponseDto.setPriceAtPurchase(itemEntity.getPriceAtPurchase());
-
-                if (itemEntity.getProduct() != null) {
-                    itemsResponseDto.setProductName(itemEntity.getProduct().getName());
-                }
-                itemsList.add(itemsResponseDto);
-            });
-            orderResponseDto.setItems(itemsList);
+            orderEntity.getItems().forEach(
+                    item -> items.add(orderItemMapper.toOrderItemsResponseDto(item)));
         }
+        dto.setItems(items);
 
-        return orderResponseDto;
+        return dto;
     }
 
-    public OrderEntity toEntity(OrderResponseDto orderResponseDto) {
-        if (orderResponseDto == null) {
+    public OrderEntity toEntity(OrderResponseDto dto) {
+        if (dto == null) {
             return null;
         }
 
-        OrderEntity orderEntity = new OrderEntity();
-        orderEntity.setId(orderResponseDto.getId());
-        orderEntity.setAddressId(orderResponseDto.getAddressId());
-        orderEntity.setBuyerId(orderResponseDto.getBuyerId());
-        orderEntity.setTotalAmount(orderResponseDto.getTotalAmount());
-        orderEntity.setDeliverySlot(orderResponseDto.getDeliverySlot());
-        orderEntity.setDeliveryTime(orderResponseDto.getDeliveryTime());
-
-        return orderEntity;
+        OrderEntity entity = new OrderEntity();
+        entity.setId(dto.getId());
+        entity.setAddressId(dto.getAddressId());
+        entity.setBuyerId(dto.getBuyerId());
+        entity.setTotalAmount(dto.getTotalAmount());
+        entity.setDeliverySlot(dto.getDeliverySlot());
+        entity.setDeliveryTime(dto.getDeliveryTime());
+        return entity;
     }
 }

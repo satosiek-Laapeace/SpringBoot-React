@@ -8,29 +8,30 @@ import org.springframework.stereotype.Component;
 @Component
 public class AddressMapper {
 
-    /** New entity. isDefault is decided by the service, so it is not copied here. */
-    public AddressEntity toEntity(AddressRequestDto request, Long userId) {
+    public AddressEntity toEntity(AddressRequestDto request, Long buyerId) {
         AddressEntity entity = new AddressEntity();
-        entity.setUserId(userId);
+        entity.setBuyerId(buyerId);
         copyFields(request, entity);
+        entity.setIsDefault(false);
         return entity;
     }
-
-    /** Copies the editable fields onto an existing entity (isDefault handled by the service). */
     public void updateEntity(AddressEntity entity, AddressRequestDto request) {
         copyFields(request, entity);
     }
 
     public AddressResponseDto toDto(AddressEntity entity) {
+        if (entity == null) {
+            return null;
+        }
         return AddressResponseDto.builder()
                 .id(entity.getId())
-                .userId(entity.getUserId())
+                .buyerId(entity.getBuyerId())
                 .street(entity.getStreet())
                 .city(entity.getCity())
                 .state(entity.getState())
                 .zip(entity.getZip())
                 .country(entity.getCountry())
-                .isDefault(entity.getIsDefault())
+                .isDefault(Boolean.TRUE.equals(entity.getIsDefault()))
                 .deliveryInstructions(entity.getDeliveryInstructions())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
@@ -40,15 +41,19 @@ public class AddressMapper {
     }
 
     private void copyFields(AddressRequestDto request, AddressEntity entity) {
-        entity.setStreet(request.getStreet());
-        entity.setCity(request.getCity());
-        entity.setState(request.getState());
-        entity.setZip(request.getZip());
-        entity.setCountry(request.getCountry());
-        entity.setDeliveryInstructions(request.getDeliveryInstructions());
+        entity.setStreet(trim(request.getStreet()));
+        entity.setCity(trim(request.getCity()));
+        entity.setState(trim(request.getState()));
+        entity.setZip(trim(request.getZip()));
+        entity.setCountry(trim(request.getCountry()));
+        entity.setDeliveryInstructions(trim(request.getDeliveryInstructions()));
         entity.setLatitude(request.getLatitude());
         entity.setLongitude(request.getLongitude());
-        entity.setGooglePlaceId(request.getGooglePlaceId());
-        entity.setFormattedAddress(request.getFormattedAddress());
+        entity.setGooglePlaceId(trim(request.getGooglePlaceId()));
+        entity.setFormattedAddress(trim(request.getFormattedAddress()));
+    }
+
+    private String trim(String value) {
+        return value == null ? null : value.trim();
     }
 }

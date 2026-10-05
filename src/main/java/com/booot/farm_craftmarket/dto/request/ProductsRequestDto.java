@@ -41,10 +41,4 @@ public class ProductsRequestDto {
 
     @NotNull(message = "Category ID is required")
     private Long categoryId;
-
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
 }

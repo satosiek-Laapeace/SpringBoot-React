@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 @Entity
 @Table(name = "roles")
 @AllArgsConstructor
@@ -20,7 +21,7 @@ public class RoleEntity {
     @Column(name = "name", nullable = false, unique = true)
     private RolesUser name;
 
-    RoleEntity(RolesUser name){
+    public RoleEntity(RolesUser name){
         this.name = name;
     }
 }

@@ -2,7 +2,10 @@ package com.booot.farm_craftmarket.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+
+import org.hibernate.annotations.CreationTimestamp;
 
 import com.booot.farm_craftmarket.enums.orders.OrderStatus;
 
@@ -21,7 +24,10 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+
 
 @Entity
 @Table(name = "order_tbl")
@@ -39,6 +45,7 @@ public class OrderEntity {
     @Column(name = "address_id", nullable = false)
     private Long addressId;
 
+    @Column(name = "delivery_time")
     private LocalDateTime deliveryTime;
 
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
@@ -51,17 +58,42 @@ public class OrderEntity {
     @Column(nullable = false)
     private OrderStatus status;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "buyer_id", insertable = false, updatable = false)
     private UserEntity buyer;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id", insertable = false, updatable = false)
     private AddressEntity address;
 
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItemEntity> items;
+    private List<OrderItemEntity> items = new ArrayList<>();
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "order")
-    private List<PaymentEntity> payments;
+    private List<PaymentEntity> payments = new ArrayList<>();
+
+    public void setBuyer(UserEntity buyer) {
+        this.buyer = buyer;
+        if (buyer != null) {
+            this.buyerId = buyer.getId();
+        }
+    }
+
+    public void setAddress(AddressEntity address) {
+        this.address = address;
+        if (address != null) {
+            this.addressId = address.getId();
+        }
+    }
 }

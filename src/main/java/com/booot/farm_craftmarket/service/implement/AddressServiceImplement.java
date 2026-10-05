@@ -24,12 +24,10 @@ public class AddressServiceImplement implements AddressService {
     private final AddressRepository addressRepository;
     private final AddressMapper addressMapper;
 
-    // ------------------------------------------------------------------ read
-
     @Override
     @Transactional(readOnly = true)
     public List<AddressResponseDto> getAllAddresses(Long buyerId) {
-        return addressRepository.findByUserIdOrderByIsDefaultDescIdAsc(buyerId).stream()
+        return addressRepository.findByBuyerIdOrderByIsDefaultDescIdAsc(buyerId).stream()
                 .map(addressMapper::toDto)
                 .toList();
     }
@@ -42,16 +40,17 @@ public class AddressServiceImplement implements AddressService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AddressResponseDto> getNearbyAddresses(Long buyerId, double latitude, double longitude, double radiusKm) {
+    public List<AddressResponseDto> getNearbyAddresses(Long buyerId, double latitude,double longitude, double radiusKm) {
         if (!GeoUtils.isValidCoordinate(latitude, longitude) || radiusKm <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid latitude, longitude or radius");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid latitude, longitude or radius");
         }
 
-        // a user has only a handful of addresses, so filtering in Java is simple and DB-independent
-        return addressRepository.findByUserIdOrderByIsDefaultDescIdAsc(buyerId).stream()
+        return addressRepository.findByBuyerIdOrderByIsDefaultDescIdAsc(buyerId).stream()
                 .filter(a -> a.getLatitude() != null && a.getLongitude() != null)
                 .map(a -> {
-                    double km = GeoUtils.distanceKm(latitude, longitude, a.getLatitude(), a.getLongitude());
+                    double km = GeoUtils.distanceKm(latitude, longitude,
+                            a.getLatitude(), a.getLongitude());
                     AddressResponseDto dto = addressMapper.toDto(a);
                     dto.setDistanceKm(Math.round(km * 100.0) / 100.0);
                     return dto;
@@ -61,13 +60,12 @@ public class AddressServiceImplement implements AddressService {
                 .toList();
     }
 
-    // ----------------------------------------------------------------- write
-
     @Override
     @Transactional
     public AddressResponseDto createAddress(Long buyerId, AddressRequestDto request) {
         validateCoordinates(request);
-        boolean isFirstAddress = addressRepository.countByUserId(buyerId) == 0;
+
+        boolean isFirstAddress = addressRepository.countByBuyerId(buyerId) == 0;
         boolean makeDefault = isFirstAddress || Boolean.TRUE.equals(request.getIsDefault());
 
         if (makeDefault) {
@@ -82,7 +80,8 @@ public class AddressServiceImplement implements AddressService {
 
     @Override
     @Transactional
-    public AddressResponseDto updateAddress(Long buyerId, Long addressId, AddressRequestDto request) {
+    public AddressResponseDto updateAddress(Long buyerId, Long addressId,
+                                            AddressRequestDto request) {
         validateCoordinates(request);
         AddressEntity entity = findOwned(buyerId, addressId);
 
@@ -121,23 +120,19 @@ public class AddressServiceImplement implements AddressService {
 
         try {
             addressRepository.delete(entity);
-            addressRepository.flush(); // surface FK errors here
+            addressRepository.flush();
         } catch (DataIntegrityViolationException e) {
-            // order_tbl.address_id still points at this address
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This address is used by an existing order and cannot be deleted");
         }
 
-        // keep exactly one default if the user still has addresses
         if (wasDefault) {
-            addressRepository.findFirstByUserIdOrderByIdAsc(buyerId).ifPresent(next -> {
+            addressRepository.findFirstByBuyerIdOrderByIdAsc(buyerId).ifPresent(next -> {
                 next.setIsDefault(true);
                 addressRepository.save(next);
             });
         }
     }
-
-    // --------------------------------------------------------------- helpers
 
     private void validateCoordinates(AddressRequestDto request) {
         if ((request.getLatitude() == null) != (request.getLongitude() == null)) {
@@ -147,7 +142,8 @@ public class AddressServiceImplement implements AddressService {
     }
 
     private AddressEntity findOwned(Long buyerId, Long addressId) {
-        return addressRepository.findByIdAndUserId(addressId, buyerId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
+        return addressRepository.findByIdAndBuyerId(addressId, buyerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Address not found"));
     }
 }

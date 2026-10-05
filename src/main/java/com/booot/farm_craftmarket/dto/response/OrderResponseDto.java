@@ -1,6 +1,5 @@
 package com.booot.farm_craftmarket.dto.response;
 
-import com.booot.farm_craftmarket.entity.OrderItemEntity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,6 +15,7 @@ public class OrderResponseDto {
 
     private Long id;
     private Long buyerId;
+    private String buyerName;
     private Long addressId;
     private BigDecimal totalAmount;
     private String deliverySlot;

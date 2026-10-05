@@ -2,6 +2,7 @@ package com.booot.farm_craftmarket.enums.stock;
 
 public enum NotificationType {
     ORDER_PLACED,
+    ORDER_STATUS,
     ORDER_SHIPPED,
     ORDER_DELIVERED,
     PAYMENT_SUCCESS,

@@ -1,6 +1,19 @@
 package com.booot.farm_craftmarket.service.implement;
 
-import com.booot.farm_craftmarket.config.CloudService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.booot.farm_craftmarket.configuration.CloudService;
 import com.booot.farm_craftmarket.dto.request.ProductsImageRequestDto;
 import com.booot.farm_craftmarket.dto.response.ProductsImageResponseDto;
 import com.booot.farm_craftmarket.entity.ProductsEntity;
@@ -8,18 +21,9 @@ import com.booot.farm_craftmarket.entity.ProductsImageEntity;
 import com.booot.farm_craftmarket.repository.ProductsImageRepository;
 import com.booot.farm_craftmarket.repository.ProductsRepository;
 import com.booot.farm_craftmarket.service.ProductsImageService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 @Service
@@ -155,13 +159,33 @@ public class ProductsImageServiceImplement implements ProductsImageService {
         deleteFromCloudinaryQuietly(publicId);
     }
 
-    private ProductsEntity findOwnedProduct(Long sellerId, Long productId) {
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+
+    private ProductsEntity findOwnedProduct(Long userId, Long productId) {
         ProductsEntity product = productsRepository.findById(productId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
-        if (!product.getSellerId().equals(sellerId)) {
+
+        if (!isAdmin() && !userId.equals(sellerIdOf(product))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this product");
         }
         return product;
+    }
+
+    /**
+     * Returns the owner's id.
+     * If ProductsEntity.seller is a UserEntity: keep this line.
+     * If it is a plain Long: change the body to "return product.getSeller();"
+     */
+    private Long sellerIdOf(ProductsEntity product) {
+        return product.getSeller() == null ? null : product.getSeller().getId();
+    }
+
+    private boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     private ProductsImageEntity findImage(Long productId, Long imageId) {
