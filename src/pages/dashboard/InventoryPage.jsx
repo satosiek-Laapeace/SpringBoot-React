@@ -1,33 +1,70 @@
-import React, { useState } from 'react';
-import { Boxes, Plus, TrendingUp, TrendingDown, RefreshCw, Truck } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 import { useStore } from '../../context/StoreContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { Pagination } from '../../components/common/Pagination';
+import { usePagination } from '../../hooks/usePagination';
+import { TableFilters } from '../../components/common/TableFilters';
 
 export const InventoryPage = () => {
-  const { stockMovements, suppliers, products, addStockMovement } = useStore();
-  const [selectedProductId, setSelectedProductId] = useState(products[0]?.id || 101);
-  const [movementType, setMovementType] = useState('RESTOCK_IN');
+  const { stockMovements, products, addStockMovement } = useStore();
+  const { t } = useLanguage();
+  const [movementSearch, setMovementSearch] = useState('');
+  const [movementFilter, setMovementFilter] = useState('ALL');
+  const filteredMovements = useMemo(() => {
+    const query = movementSearch.trim().toLocaleLowerCase();
+    return stockMovements.filter(movement => {
+      const matchesType = movementFilter === 'ALL' || movement.type === movementFilter;
+      const matchesSearch = !query || [movement.product_name, movement.type, movement.note, movement.id, movement.quantity_change]
+        .some(value => String(value ?? '').toLocaleLowerCase().includes(query));
+      return matchesType && matchesSearch;
+    });
+  }, [stockMovements, movementSearch, movementFilter]);
+  const movementPage = usePagination(filteredMovements);
+  const [selectedProductIdState, setSelectedProductId] = useState('');
+  const [movementType, setMovementType] = useState('RESTOCK');
   const [changeQty, setChangeQty] = useState('50');
   const [note, setNote] = useState('Farm harvest restock batch');
+  const [saving, setSaving] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const selectedProductId = products.some(product => String(product.id) === selectedProductIdState)
+    ? selectedProductIdState
+    : String(products[0]?.id ?? '');
+  const selectedProduct = products.find(product => String(product.id) === selectedProductId)
+    || products[0];
 
-  const handleStockAdjust = (e) => {
+  const handleStockAdjust = async (e) => {
     e.preventDefault();
-    const prod = products.find(p => p.id === Number(selectedProductId));
+    const prod = selectedProduct;
     if (!prod) return;
 
-    const qtyVal = parseInt(changeQty, 10) * (movementType === 'SALE_OUT' ? -1 : 1);
-    const newQtyAfter = Math.max(0, prod.stock_quantity + qtyVal);
+    const enteredQuantity = Number.parseInt(changeQty, 10);
+    if (!Number.isInteger(enteredQuantity) || enteredQuantity === 0
+        || (movementType !== 'ADJUSTMENT' && enteredQuantity < 0)) {
+      setActionError('Enter a non-zero quantity. Use a positive amount for restocks and sales.');
+      return;
+    }
 
-    addStockMovement({
-      product_id: prod.id,
-      product_name: prod.name,
-      type: movementType,
-      quantity_change: qtyVal,
-      quantity_after: newQtyAfter,
-      supplier_name: suppliers[0]?.name || 'GreenAgro Supplies',
-      note
-    });
-
-    setNote('');
+    const quantityChange = movementType === 'SALE'
+      ? -Math.abs(enteredQuantity)
+      : movementType === 'RESTOCK'
+        ? Math.abs(enteredQuantity)
+        : enteredQuantity;
+    setSaving(true);
+    setActionError('');
+    try {
+      await addStockMovement({
+        product_id: prod.id,
+        product_name: prod.name,
+        type: movementType,
+        quantity_change: quantityChange,
+        note,
+      });
+      setNote('');
+    } catch (error) {
+      setActionError(error.message || 'Stock movement could not be saved.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -35,32 +72,36 @@ export const InventoryPage = () => {
       
       <div>
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white font-serif">
-          Inventory Movements & Suppliers (`stock_movement_tbl`)
+          {t('inventoryTitle')}
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Traceable real-time stock logs (IN/OUT/ADJUSTMENT) and supplier distributor contacts.
+          {t('inventoryDescription')}
         </p>
       </div>
+      {actionError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{actionError}</p>}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Stock Movement Log Table */}
         <div className="lg:col-span-8 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">Recent Stock Movement Logs</h3>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><h3 className="text-base font-bold text-slate-900 dark:text-white">{t('inventoryRecentMovements')}</h3><p className="mt-1 text-xs text-slate-500">Showing {filteredMovements.length} of {stockMovements.length} movements</p></div>
+            <TableFilters searchValue={movementSearch} onSearchChange={setMovementSearch} searchPlaceholder="Search stock movements..." searchLabel="Search stock movements" filters={[{ label: 'Filter by movement type', value: movementFilter, onChange: setMovementFilter, options: [{ value: 'ALL', label: 'All types' }, ...['RESTOCK', 'SALE', 'ADJUSTMENT', 'RETURN', 'DAMAGED'].map(type => ({ value: type, label: type }))] }]} />
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-850 text-slate-400 uppercase font-bold text-[10px]">
                 <tr>
-                  <th className="p-3">Item Name</th>
-                  <th className="p-3">Type</th>
-                  <th className="p-3">Change</th>
-                  <th className="p-3">After Qty</th>
-                  <th className="p-3">Note</th>
+                  <th className="p-3">{t('inventoryProduct')}</th>
+                  <th className="p-3">{t('inventoryType')}</th>
+                  <th className="p-3">{t('inventoryChange')}</th>
+                  <th className="p-3">{t('inventoryAfterQuantity')}</th>
+                  <th className="p-3">{t('inventoryNote')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {stockMovements.map(m => (
+                {movementPage.paginatedItems.map(m => (
                   <tr key={m.id}>
                     <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{m.product_name}</td>
                     <td className="p-3 font-semibold text-slate-500">{m.type}</td>
@@ -74,17 +115,19 @@ export const InventoryPage = () => {
               </tbody>
             </table>
           </div>
+          {filteredMovements.length === 0 && <p className="py-10 text-center text-xs text-slate-500">No stock movements match these filters.</p>}
+          <Pagination currentPage={movementPage.currentPage} pageCount={movementPage.pageCount} totalItems={movementPage.totalItems} pageSize={movementPage.pageSize} onPageChange={movementPage.setCurrentPage} onPageSizeChange={movementPage.setPageSize} t={t} />
         </div>
 
-        {/* Adjust Stock Form & Suppliers */}
-        <div className="lg:col-span-4 space-y-6">
+        {/* Adjust Stock Form */}
+        <div className="lg:col-span-4">
           
           {/* Quick Stock Adjust Form */}
           <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Record Stock Adjustment</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('inventoryAdjustStock')}</h3>
             <form onSubmit={handleStockAdjust} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">Select Product</label>
+                <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">{t('inventorySelectProduct')}</label>
                 <select
                   value={selectedProductId}
                   onChange={(e) => setSelectedProductId(e.target.value)}
@@ -97,23 +140,24 @@ export const InventoryPage = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">Movement Type</label>
+                <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">{t('inventoryMovementType')}</label>
                 <select
                   value={movementType}
                   onChange={(e) => setMovementType(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                 >
-                  <option value="RESTOCK_IN">RESTOCK_IN (+ Stock)</option>
-                  <option value="SALE_OUT">SALE_OUT (- Stock)</option>
+                  <option value="RESTOCK">RESTOCK (+ Stock)</option>
+                  <option value="SALE">SALE (- Stock)</option>
                   <option value="ADJUSTMENT">ADJUSTMENT (Audit)</option>
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">Quantity</label>
+                <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">{t('cartQuantity')}</label>
                 <input
                   type="number"
                   required
+                  step="1"
                   value={changeQty}
                   onChange={(e) => setChangeQty(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
@@ -121,36 +165,24 @@ export const InventoryPage = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">Note</label>
+                <label className="font-bold text-slate-600 dark:text-slate-300 block mb-1">{t('inventoryNote')}</label>
                 <input
                   type="text"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="Reason / Batch details"
+                  placeholder={t('inventoryNotePlaceholder')}
                   className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-colors"
+                disabled={saving || products.length === 0}
+                className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Post Stock Movement
+                {saving ? 'Saving...' : t('inventoryPostMovement')}
               </button>
             </form>
-          </div>
-
-          {/* Suppliers List (supplier_tbl) */}
-          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Active Suppliers (`supplier_tbl`)</h3>
-            <div className="space-y-2">
-              {suppliers.map(s => (
-                <div key={s.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 text-xs">
-                  <span className="font-bold text-slate-800 dark:text-slate-100 block">{s.name}</span>
-                  <span className="text-slate-400 block text-[10px]">{s.contact_person} • {s.phone}</span>
-                </div>
-              ))}
-            </div>
           </div>
 
         </div>

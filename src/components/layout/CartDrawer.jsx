@@ -19,9 +19,9 @@ export const CartDrawer = () => {
 
   if (!isCartOpen) return null;
 
-  const handleCheckout = () => {
+  const handleViewCart = () => {
     setIsCartOpen(false);
-    navigate('/checkout');
+    navigate('/cart');
   };
 
   return (
@@ -153,10 +153,10 @@ export const CartDrawer = () => {
                   Clear
                 </button>
                 <button
-                  onClick={handleCheckout}
+                  onClick={handleViewCart}
                   className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all"
                 >
-                  Proceed to Checkout
+                  View full cart
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

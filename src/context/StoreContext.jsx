@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect } from 'react';
+import { fetchAllAPI } from '../services/apiDataService';
+import { cancelOrderAPI, updateOrderStatusAPI } from '../features/orders/services/orderApi';
+import { createStockMovementAPI } from '../features/inventory/services/inventoryApi';
+import { createProductAPI, deleteProductAPI } from '../features/products/services/productApi';
+import { addCartItemAPI, clearCartAPI, removeCartItemAPI, updateCartItemAPI } from '../features/cart/services/cartApi';
+import { normalizeProduct } from '../features/products/utils/normalizeProduct';
+import { markAllNotificationsReadAPI, markNotificationReadAPI, fetchNotificationsAPI } from '../features/notifications/services/notificationApi';
+import { useAuth } from '../features/auth/hooks/useAuth';
 import {
   initialProducts,
   initialCategories,
@@ -13,114 +21,207 @@ import {
 } from '../utils/mockData';
 
 const StoreContext = createContext();
+const EMPTY_CART = [];
+const normalizeCartQuantity = (value) => {
+  const quantity = Number(value);
+  return Number.isInteger(quantity) && quantity > 0 ? quantity : 1;
+};
+const normalizeNotification = (notification) => ({
+  ...notification,
+  is_read: Boolean(notification.read ?? notification.isRead ?? notification.is_read),
+  created_at: notification.createdAt ?? notification.created_at,
+});
 
 export const StoreProvider = ({ children }) => {
-  // Current user & active role (BUYER | SELLER | ADMIN)
-  const [currentUser, setCurrentUser] = useState(initialUsers[1]); // Default BUYER (Sreymom Heng)
-  const [activeRole, setActiveRole] = useState('BUYER');
+  const { user: currentUser, role, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const activeRole = role || 'GUEST';
 
-  // ERD State
-  const [users, setUsers] = useState(initialUsers);
-  const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem('craftfarm_products');
-    return saved ? JSON.parse(saved) : initialProducts;
-  });
+  const [users] = useState(initialUsers);
+  const [products, setProducts] = useState(initialProducts);
   const [categories, setCategories] = useState(initialCategories);
   const [suppliers, setSuppliers] = useState(initialSuppliers);
   const [addresses, setAddresses] = useState(initialAddresses);
-  const [orders, setOrders] = useState(() => {
-    const saved = localStorage.getItem('craftfarm_orders');
-    return saved ? JSON.parse(saved) : initialOrders;
-  });
+  const [orders, setOrders] = useState(initialOrders);
   const [stockMovements, setStockMovements] = useState(initialStockMovements);
   const [reviews, setReviews] = useState(initialReviews);
   const [notifications, setNotifications] = useState(initialNotifications);
-  const [vehicles, setVehicles] = useState(initialFleetVehicles);
+  const [vehicles] = useState(initialFleetVehicles);
 
-  // Cart State
-  const [cart, setCart] = useState(() => {
-    const saved = localStorage.getItem('craftfarm_cart');
-    return saved ? JSON.parse(saved) : [
-      { product_id: 101, quantity: 2 },
-      { product_id: 103, quantity: 1 }
-    ];
-  });
-
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartState, setCartState] = useState({ token: null, items: [] });
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('craftfarm_products', JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem('craftfarm_cart', JSON.stringify(cart));
-  }, [cart]);
-
-  useEffect(() => {
-    localStorage.setItem('craftfarm_orders', JSON.stringify(orders));
-  }, [orders]);
-
-  // User Governance Actions (user_tbl, roles, user_roles)
-  const toggleUserEnabled = (userId) => {
-    setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, enabled: !u.enabled } : u))
-    );
-  };
-
-  const toggleUserLock = (userId) => {
-    setUsers(prev =>
-      prev.map(u => {
-        if (u.id === userId) {
-          const isLocked = !!u.lock_time;
-          return {
-            ...u,
-            lock_time: isLocked ? null : new Date().toISOString().slice(0, 16).replace('T', ' ')
-          };
-        }
-        return u;
-      })
-    );
-  };
-
-  const updateUserRole = (userId, newRole) => {
-    setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, role: newRole } : u))
-    );
-  };
-
-  // Category Actions (category_tbl)
-  const addCategory = (category) => {
-    const newCat = {
-      id: Date.now(),
-      public_id: `cat_${Date.now()}`,
-      count: 0,
-      ...category
+  const isBuyer = activeRole === 'BUYER' && Boolean(token);
+  const cart = isBuyer && cartState.token === token ? cartState.items : EMPTY_CART;
+  const isCartOpen = isBuyer && cartDrawerOpen;
+  const setCart = useCallback((nextItems) => setCartState((current) => {
+    const currentItems = current.token === token ? current.items : [];
+    return {
+      token,
+      items: typeof nextItems === 'function' ? nextItems(currentItems) : nextItems,
     };
-    setCategories(prev => [...prev, newCat]);
+  }), [token]);
+  const setIsCartOpen = (nextOpen) => {
+    const shouldOpen = typeof nextOpen === 'function' ? nextOpen(isCartOpen) : nextOpen;
+    setCartDrawerOpen(Boolean(shouldOpen) && isBuyer);
   };
 
-  const deleteCategory = (id) => {
-    setCategories(prev => prev.filter(c => c.id !== id));
+  useEffect(() => {
+    if (!isBuyer && cartState.token) {
+      setCartState({ token: null, items: [] });
+      localStorage.removeItem('craftfarm_cart');
+    }
+  }, [isBuyer, cartState.token]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    let isCurrent = true;
+
+    const loadAPIData = async () => {
+      const apiData = await fetchAllAPI({
+        user: currentUser,
+        role: activeRole,
+        isAuthenticated,
+      });
+      if (!isCurrent) return;
+
+      if (Array.isArray(apiData.products)) {
+        setProducts(apiData.products.map(normalizeProduct));
+      } else if (activeRole === 'SELLER') {
+        setProducts([]);
+      }
+
+      if (Array.isArray(apiData.categories)) {
+        setCategories(apiData.categories.map((category) => ({
+          ...category,
+          id: category.id ?? category.categoryId,
+          categories_name: category.name ?? category.categoryName ?? 'Other',
+          description: category.description ?? 'Farm produce category',
+          icon_url: category.iconUrl ?? category.icon_url ?? '🌱',
+        })));
+      }
+
+      if (Array.isArray(apiData.orders)) setOrders(apiData.orders);
+      else if (activeRole === 'SELLER') setOrders([]);
+      if (Array.isArray(apiData.reviews)) setReviews(apiData.reviews);
+      if (Array.isArray(apiData.notifications)) setNotifications(apiData.notifications.map(normalizeNotification));
+      else if (isAuthenticated) setNotifications([]);
+
+      if (Array.isArray(apiData.cart?.cartItems)) {
+        setCart(apiData.cart.cartItems.map((item) => ({
+          product_id: item.productId,
+          quantity: normalizeCartQuantity(item.quantity),
+        })));
+      }
+
+      if (Array.isArray(apiData.suppliers)) {
+        setSuppliers(apiData.suppliers.map((supplier) => ({
+          ...supplier,
+          id: supplier.id ?? supplier.supplierId,
+          name: supplier.name ?? supplier.supplierName ?? 'Supplier',
+          contact_person: supplier.contactPerson ?? supplier.contact_person ?? supplier.contact ?? '',
+          phone: supplier.phone ?? '',
+          is_active: supplier.active ?? supplier.is_active ?? true,
+        })));
+      }
+
+      if (Array.isArray(apiData.addresses)) {
+        setAddresses(apiData.addresses.map((address) => ({
+          ...address,
+          id: address.id ?? address.addressId,
+          title: address.title ?? 'Address',
+          street_address: address.streetAddress ?? address.street_address ?? address.street ?? '',
+          postal_code: address.postalCode ?? address.postal_code ?? address.zipCode ?? address.zip ?? '',
+          is_default: address.isDefault ?? address.is_default ?? false,
+        })));
+      }
+
+      if (Array.isArray(apiData.stockMovements)) {
+        setStockMovements(apiData.stockMovements.map(movement => ({
+          ...movement,
+          product_id: movement.productId ?? movement.product_id,
+          product_name: movement.productName ?? movement.product_name ?? '',
+          quantity_change: Number(movement.quantityChange ?? movement.quantity_change ?? 0),
+          quantity_after: Number(movement.quantityAfter ?? movement.quantity_after ?? 0),
+          created_at: movement.createdAt ?? movement.created_at,
+        })));
+      }
+    };
+
+    loadAPIData();
+    return () => {
+      isCurrent = false;
+    };
+  }, [authLoading, activeRole, currentUser, isAuthenticated, setCart, token]);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !currentUser?.id) return undefined;
+    let isCurrent = true;
+    const refreshNotifications = async () => {
+      try {
+        const result = await fetchNotificationsAPI({ userId: currentUser.id, page: 0, size: 50 });
+        if (isCurrent && Array.isArray(result)) setNotifications(result.map(normalizeNotification));
+      } catch (error) {
+        if (error.status !== 401 && error.status !== 403) {
+          console.warn(`FarmCraft notifications API: ${error.message}`);
+        }
+      }
+    };
+    const intervalId = window.setInterval(refreshNotifications, 30000);
+    return () => {
+      isCurrent = false;
+      window.clearInterval(intervalId);
+    };
+  }, [authLoading, isAuthenticated, currentUser?.id]);
+
+  const markNotificationAsRead = async (notificationId) => {
+    if (!currentUser?.id) return;
+    const notification = notifications.find(item => String(item.id) === String(notificationId));
+    if (notification?.is_read) return;
+    await markNotificationReadAPI(notificationId, currentUser.id);
+    setNotifications(current => current.map(item => String(item.id) === String(notificationId)
+      ? { ...item, read: true, is_read: true }
+      : item));
   };
+
+  const markAllNotificationsAsRead = async () => {
+    if (!currentUser?.id) return;
+    await markAllNotificationsReadAPI(currentUser.id);
+    setNotifications(current => current.map(item => ({ ...item, read: true, is_read: true })));
+  };
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isBuyer) {
+      setCartState((current) => ({ token: null, items: [] }));
+      localStorage.removeItem('craftfarm_cart');
+      return;
+    }
+    localStorage.setItem('craftfarm_cart', JSON.stringify(cart));
+  }, [authLoading, cart, isBuyer]);
 
   // Cart Actions
   const addToCart = (product, qty = 1) => {
+    if (activeRole !== 'BUYER' || !token) return false;
+    const quantityToAdd = normalizeCartQuantity(qty);
+
     setCart(prev => {
       const existing = prev.find(item => item.product_id === product.id);
       if (existing) {
         return prev.map(item =>
           item.product_id === product.id
-            ? { ...item, quantity: item.quantity + qty }
+            ? { ...item, quantity: normalizeCartQuantity(item.quantity) + quantityToAdd }
             : item
         );
       }
-      return [...prev, { product_id: product.id, quantity: qty }];
+      return [...prev, { product_id: product.id, quantity: quantityToAdd }];
     });
+    addCartItemAPI(product.id, quantityToAdd).catch((error) => console.warn(`FarmCraft cart API: ${error.message}`));
     setIsCartOpen(true);
+    return true;
   };
 
   const updateCartQuantity = (productId, quantity) => {
+    if (activeRole !== 'BUYER' || !token) return;
     if (quantity <= 0) {
       removeFromCart(productId);
       return;
@@ -130,13 +231,47 @@ export const StoreProvider = ({ children }) => {
         item.product_id === productId ? { ...item, quantity } : item
       )
     );
+    updateCartItemAPI(productId, quantity).catch((error) => console.warn(`FarmCraft cart API: ${error.message}`));
   };
 
   const removeFromCart = (productId) => {
+    if (activeRole !== 'BUYER' || !token) return;
     setCart(prev => prev.filter(item => item.product_id !== productId));
+    removeCartItemAPI(productId).catch((error) => console.warn(`FarmCraft cart API: ${error.message}`));
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    if (activeRole !== 'BUYER' || !token) return;
+    setCart([]);
+    clearCartAPI().catch((error) => console.warn(`FarmCraft cart API: ${error.message}`));
+  };
+
+  const updateOrderStatus = async (orderId, status) => {
+    if (localStorage.getItem('token')) {
+      try {
+        if (status === 'CANCELLED') {
+          await cancelOrderAPI(orderId);
+          setOrders(currentOrders => currentOrders.map(order =>
+            order.id === orderId ? { ...order, status } : order
+          ));
+          return true;
+        }
+
+        const updatedOrder = await updateOrderStatusAPI(orderId, status);
+        setOrders(currentOrders => currentOrders.map(order =>
+          order.id === orderId ? { ...order, ...updatedOrder } : order
+        ));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    setOrders(currentOrders => currentOrders.map(order =>
+      order.id === orderId ? { ...order, status } : order
+    ));
+    return true;
+  };
 
   const getCartTotal = () => {
     return cart.reduce((total, item) => {
@@ -149,162 +284,56 @@ export const StoreProvider = ({ children }) => {
     return cart.reduce((count, item) => count + item.quantity, 0);
   };
 
-  // Product Actions
-  const addProduct = (newProduct) => {
-    const product = {
-      id: Date.now(),
-      seller_id: currentUser.id,
-      rating: 5.0,
-      reviews_count: 0,
-      status: 'Published',
-      public_id: `img_${Date.now()}`,
-      code: `#00${Math.floor(1000 + Math.random() * 9000)}ABM`,
-      images: [newProduct.image_url],
-      ...newProduct
-    };
-    setProducts(prev => [product, ...prev]);
-
-    addStockMovement({
-      product_id: product.id,
-      product_name: product.name,
-      type: 'INITIAL_STOCK',
-      quantity_change: product.stock_quantity,
-      quantity_after: product.stock_quantity,
-      supplier_id: null,
-      supplier_name: 'Self Farm Harvest',
-      note: 'Initial inventory listing'
-    });
+  const addProduct = async (newProduct) => {
+    const created = normalizeProduct(await createProductAPI(newProduct));
+    setProducts(prev => [created, ...prev.filter(product => product.id !== created.id)]);
+    return created;
   };
 
-  const updateProduct = (updatedProduct) => {
-    setProducts(prev =>
-      prev.map(p => (p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p))
-    );
-  };
+  const updateProduct = (productId, updates) => {
+    setProducts(prev => prev.map((product) => {
+      if (product.id !== productId) return product;
 
-  const deleteProduct = (id) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-  };
-
-  // Stock Movement Actions
-  const addStockMovement = (movement) => {
-    const newMovement = {
-      id: Date.now(),
-      created_at: new Date().toISOString(),
-      ...movement
-    };
-    setStockMovements(prev => [newMovement, ...prev]);
-
-    if (movement.product_id && movement.quantity_change) {
-      setProducts(prev =>
-        prev.map(p => {
-          if (p.id === movement.product_id) {
-            const newStock = Math.max(0, p.stock_quantity + movement.quantity_change);
-            return { ...p, stock_quantity: newStock };
-          }
-          return p;
-        })
-      );
-    }
-  };
-
-  // Order Actions
-  const createOrder = (orderData) => {
-    const cartItemsDetails = cart.map(item => {
-      const p = products.find(prod => prod.id === item.product_id);
       return {
-        id: Date.now() + Math.floor(Math.random() * 100),
-        product_id: item.product_id,
-        name: p ? p.name : 'Farm Product',
-        quantity: item.quantity,
-        price_at_purchase: p ? p.price : 0,
-        sub_total: p ? p.price * item.quantity : 0
+        ...product,
+        ...updates,
+        price: Number(updates.price ?? product.price),
+        stock_quantity: Number(updates.stock_quantity ?? product.stock_quantity),
+        image_url: updates.image_url || updates.images?.[0] || product.image_url,
+        images: Array.isArray(updates.images) && updates.images.length > 0 ? updates.images : product.images || [product.image_url],
       };
+    }));
+  };
+
+  const deleteProduct = async (productId) => {
+    await deleteProductAPI(productId);
+    setProducts(prev => prev.filter((product) => product.id !== productId));
+  };
+
+  const addStockMovement = async (movement) => {
+    const saved = await createStockMovementAPI({
+      productId: movement.product_id,
+      type: movement.type,
+      quantityChange: Number(movement.quantity_change),
+      supplierId: movement.supplier_id || null,
+      note: movement.note,
     });
-
-    const totalAmount = getCartTotal();
-
-    const newOrder = {
-      id: Math.floor(5000 + Math.random() * 5000),
-      buyer_id: currentUser.id,
-      buyer_name: currentUser.full_name,
-      address_id: orderData.address_id || 101,
-      delivery_time: orderData.delivery_time || '2026-09-30 10:00:00',
-      delivery_slot: orderData.delivery_slot || 'Morning (8:00 AM - 11:00 AM)',
-      total_amount: totalAmount,
-      status: 'PENDING',
-      created_at: new Date().toISOString(),
-      items: cartItemsDetails,
-      payment: {
-        id: Date.now(),
-        method: orderData.payment_method || 'ABA KHQR',
-        status: 'PAID',
-        transaction_id: `TXN-ABA-${Math.floor(100000 + Math.random() * 900000)}`,
-        paid_at: new Date().toISOString()
-      }
+    const product = products.find(item => String(item.id) === String(saved.productId));
+    const savedMovement = {
+      ...saved,
+      product_id: saved.productId,
+      product_name: product?.name || movement.product_name,
+      quantity_change: Number(saved.quantityChange),
+      quantity_after: Number(saved.quantityAfter),
+      created_at: saved.createdAt,
     };
+    setStockMovements(prev => [savedMovement, ...prev.filter(item => item.id !== saved.id)]);
 
-    setOrders(prev => [newOrder, ...prev]);
-
-    cartItemsDetails.forEach(item => {
-      addStockMovement({
-        product_id: item.product_id,
-        product_name: item.name,
-        type: 'SALE_OUT',
-        quantity_change: -item.quantity,
-        quantity_after: Math.max(0, (products.find(p => p.id === item.product_id)?.stock_quantity || 0) - item.quantity),
-        supplier_id: null,
-        supplier_name: '-',
-        reference_order_id: newOrder.id,
-        note: `Order #${newOrder.id} checkout`
-      });
-    });
-
-    clearCart();
-    return newOrder;
-  };
-
-  const updateOrderStatus = (orderId, newStatus) => {
-    setOrders(prev =>
-      prev.map(o => (o.id === orderId ? { ...o, status: newStatus } : o))
-    );
-  };
-
-  // Supplier Actions
-  const addSupplier = (supplier) => {
-    const newSupp = { id: Date.now(), is_active: true, created_at: new Date().toISOString(), ...supplier };
-    setSuppliers(prev => [...prev, newSupp]);
-  };
-
-  // Review Actions
-  const addReview = (product_id, rating, comment) => {
-    const newRev = {
-      id: Date.now(),
-      product_id,
-      buyer_id: currentUser.id,
-      buyer_name: currentUser.full_name,
-      rating,
-      comment,
-      created_at: new Date().toISOString()
-    };
-    setReviews(prev => [newRev, ...prev]);
-  };
-
-  const markNotificationAsRead = (id) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
-    );
-  };
-
-  const markAllNotificationsAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-  };
-
-  const switchRole = (role) => {
-    setActiveRole(role);
-    if (role === 'BUYER') setCurrentUser(initialUsers[1]);
-    if (role === 'SELLER') setCurrentUser(initialUsers[0]);
-    if (role === 'ADMIN') setCurrentUser(initialUsers[2]);
+    setProducts(prev => prev.map((product) => {
+      if (String(product.id) !== String(saved.productId)) return product;
+      return { ...product, stock_quantity: Number(saved.quantityAfter) };
+    }));
+    return savedMovement;
   };
 
   return (
@@ -312,43 +341,34 @@ export const StoreProvider = ({ children }) => {
       value={{
         currentUser,
         activeRole,
-        switchRole,
         users,
-        toggleUserEnabled,
-        toggleUserLock,
-        updateUserRole,
         products,
         categories,
-        addCategory,
-        deleteCategory,
         suppliers,
         addresses,
         orders,
         stockMovements,
         reviews,
         notifications,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
         vehicles,
         cart,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        addStockMovement,
         addToCart,
         updateCartQuantity,
         removeFromCart,
         clearCart,
+        updateOrderStatus,
         getCartTotal,
         getCartCount,
         isCartOpen,
         setIsCartOpen,
         isNotificationsOpen,
         setIsNotificationsOpen,
-        addProduct,
-        updateProduct,
-        deleteProduct,
-        addStockMovement,
-        createOrder,
-        updateOrderStatus,
-        addSupplier,
-        addReview,
-        markNotificationAsRead,
-        markAllNotificationsAsRead
       }}
     >
       {children}

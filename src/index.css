@@ -1,20 +1,781 @@
+@import url('https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-forest-900: #1b4332;
+  --color-forest-800: #2d6a4f;
+  --color-forest-700: #40916c;
+  --color-straw-500: #d4a373;
+  --color-straw-600: #bc8a5f;
+  --color-straw-100: #f4e8c1;
+  --color-offwhite: #f9f6f0;
+  --color-slate-dark: #1a202c;
+}
+
+.max-w-7xl {
+  width: 100%;
+}
+
+.auth-primary-button {
+  background-color: #087b53;
+  background-image: linear-gradient(105deg, #0b6245 0%, #078257 52%, #0b6e4c 100%);
+  border-radius: 9999px;
+  box-shadow: 0 8px 20px rgb(8 104 69 / 24%), inset 0 1px 0 rgb(255 255 255 / 15%);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.auth-primary-button:hover:not(:disabled) {
+  filter: saturate(1.12) brightness(1.04);
+  transform: translateY(-2px);
+  box-shadow: 0 13px 26px rgb(8 104 69 / 30%), inset 0 1px 0 rgb(255 255 255 / 18%);
+}
+
+.auth-primary-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgb(8 104 69 / 20%);
+}
+
+.auth-primary-button:disabled {
+  cursor: wait;
+  filter: saturate(0.7);
+}
+
+.auth-visual {
+  isolation: isolate;
+  background-color: #173d2d;
+}
+
+.auth-visual__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgb(9 37 25 / 22%) 0%, rgb(9 37 25 / 8%) 36%, rgb(9 37 25 / 88%) 100%);
+}
 
 @layer base {
   html {
     scroll-behavior: smooth;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   }
   
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 antialiased;
+    background-color: #ffffff;
+    color: #1a202c;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    .auth-visual__image {
+      animation: none;
+      clip-path: none;
+    }
+  }
+
+  html.dark body {
+    background-color: #0c1711;
+    color: #e8efe9;
+  }
+
+  /* Khmer Font Class - Os Battambang */
+  html[lang="km"] body,
+  .font-khmer {
+    font-family: 'Battambang', cursive, sans-serif !important;
+  }
+}
+
+.admin-console {
+  font-family: 'Manrope', sans-serif;
+  --admin-ink: #172a22;
+  --admin-green: #087f5b;
+  --admin-line: #e4ebe6;
+}
+
+.admin-console .admin-category-row {
+  border-left: 2px solid transparent;
+}
+
+.admin-console .admin-category-row:hover {
+  background-color: #ecfdf5;
+  border-left-color: #10b981;
+}
+
+.dark .admin-console .admin-category-row:hover {
+  background-color: #1b3829 !important;
+  border-left-color: #34d399;
+}
+
+html[lang="km"] .admin-console {
+  font-family: 'Khmer OS Battambang', 'Battambang', sans-serif;
+  letter-spacing: 0;
+}
+
+.storefront-layout h1,
+.storefront-layout h2,
+.storefront-layout h3,
+.auth-layout h1,
+.auth-layout h2 {
+  font-family: 'Manrope', 'Inter', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+/* Keep Khmer dashboard text readable at the compact sizes used by the UI. */
+html[lang="km"] .admin-console h1,
+html[lang="km"] .admin-console main .text-3xl,
+html[lang="km"] .admin-console main .text-4xl {
+  font-size: 1.4rem !important;
+  line-height: 1.4 !important;
+  font-weight: 700 !important;
+}
+
+html[lang="km"] .admin-console h2,
+html[lang="km"] .admin-console main .text-2xl,
+html[lang="km"] .admin-console main .text-xl {
+  font-size: 1.15rem !important;
+  line-height: 1.45 !important;
+  font-weight: 700 !important;
+}
+
+html[lang="km"] .admin-console h3,
+html[lang="km"] .admin-console main .text-lg {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  font-weight: 600 !important;
+}
+
+html[lang="km"] .admin-console main .text-base {
+  font-size: 0.9rem !important;
+  line-height: 1.55 !important;
+}
+
+html[lang="km"] .admin-console main .text-sm,
+html[lang="km"] .admin-console main p.text-sm,
+html[lang="km"] .admin-console main span.text-sm {
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+}
+
+html[lang="km"] .admin-console main .text-xs,
+html[lang="km"] .admin-console main p.text-xs,
+html[lang="km"] .admin-console main span.text-xs {
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+}
+
+html[lang="km"] .admin-console main .text-\[10px\],
+html[lang="km"] .admin-console main .text-\[11px\],
+html[lang="km"] .admin-console main .text-\[9px\] {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+
+/* Sidebar navigation links in Khmer */
+html[lang="km"] .admin-console aside nav a,
+html[lang="km"] .admin-console aside nav a span {
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+/* Clean, crisp data tables in Khmer mode */
+html[lang="km"] .admin-console main table thead th {
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  letter-spacing: 0 !important;
+  font-weight: 700 !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+html[lang="km"] .admin-console main table tbody td,
+html[lang="km"] .admin-console main table tbody td *:not(svg):not(path) {
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+}
+
+/* Inputs, buttons, selects and badges in Khmer */
+html[lang="km"] .admin-console main input,
+html[lang="km"] .admin-console main select,
+html[lang="km"] .admin-console main textarea,
+html[lang="km"] .admin-console main button,
+html[lang="km"] .admin-console main label,
+html[lang="km"] .admin-console header input,
+html[lang="km"] .admin-console header button {
+  font-size: 13px !important;
+}
+
+/* Shared admin workspace polish for every dashboard feature and its data tables. */
+.admin-console aside {
+  border-color: var(--admin-line);
+  box-shadow: 12px 0 32px rgb(22 44 31 / 3%);
+}
+
+.admin-console aside nav a {
+  min-height: 42px;
+  border-radius: 10px;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.admin-console aside nav a[aria-current="page"] {
+  box-shadow: inset 0 0 0 1px rgb(8 127 91 / 10%);
+}
+
+.admin-console header.sticky {
+  border-color: var(--admin-line);
+  box-shadow: 0 4px 18px rgb(22 44 31 / 3%);
+}
+
+.admin-console main {
+  padding-top: 30px;
+  padding-bottom: 48px;
+}
+
+.admin-console main article,
+.admin-console main section.rounded-2xl,
+.admin-console main section.overflow-hidden.rounded-2xl {
+  border-color: var(--admin-line);
+  box-shadow: 0 8px 24px rgb(22 44 31 / 3%);
+}
+
+.admin-console main table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-console main table thead {
+  background: #f7faf8;
+  color: #64756a;
+}
+
+.admin-console main table thead th {
+  border-bottom: 1px solid var(--admin-line);
+  font-size: 10px;
+  letter-spacing: .09em;
+}
+
+.admin-console main table tbody tr {
+  transition: background-color .16s ease;
+}
+
+.admin-console main table tbody tr:hover {
+  background-color: #f5faf7;
+}
+
+.admin-console main input:not([type="checkbox"]):not([type="radio"]),
+.admin-console main select,
+.admin-console main textarea {
+  border-color: #dce6df;
+  border-radius: 10px;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.admin-console main input:not([type="checkbox"]):not([type="radio"]):focus,
+.admin-console main select:focus,
+.admin-console main textarea:focus {
+  border-color: #43a47e;
+  box-shadow: 0 0 0 4px rgb(8 127 91 / 10%);
+}
+
+.admin-console main input[type="file"]::file-selector-button {
+  cursor: pointer;
+}
+
+html.dark .admin-console main table thead {
+  background: #14231b;
+  color: #a9b9ae;
+}
+
+html.dark .admin-console main table tbody tr:hover {
+  background-color: #14231b;
+}
+
+html.dark .admin-console main input:not([type="checkbox"]):not([type="radio"]),
+html.dark .admin-console main select,
+html.dark .admin-console main textarea {
+  border-color: #33473a;
+  background-color: #101b16;
+}
+
+@media (max-width: 640px) {
+  .admin-console main {
+    padding-top: 22px;
+  }
+}
+
+/* Keep typography consistent between dashboard features and supported languages. */
+.admin-console,
+.admin-console main,
+.admin-console main * {
+  font-family: inherit;
+}
+
+.admin-console main h1 {
+  font-size: 1.75rem !important;
+  line-height: 1.3 !important;
+  font-weight: 700 !important;
+}
+
+.admin-console main h2 {
+  font-size: 1.2rem !important;
+  line-height: 1.4 !important;
+  font-weight: 700 !important;
+}
+
+.admin-console main h3 {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  font-weight: 600 !important;
+}
+
+.admin-console main .text-4xl,
+.admin-console main .text-3xl {
+  font-size: 1.75rem !important;
+  line-height: 1.3 !important;
+}
+
+.admin-console main .text-2xl {
+  font-size: 1.5rem !important;
+  line-height: 1.4 !important;
+}
+
+.admin-console main .text-xl {
+  font-size: 1.25rem !important;
+  line-height: 1.45 !important;
+}
+
+.admin-console main h1.text-4xl,
+.admin-console main h1.text-3xl,
+.admin-console main h1.text-2xl,
+.admin-console main h1.text-xl {
+  font-size: 1.75rem !important;
+  line-height: 1.3 !important;
+}
+
+.admin-console main h2.text-4xl,
+.admin-console main h2.text-3xl,
+.admin-console main h2.text-2xl,
+.admin-console main h2.text-xl,
+.admin-console main h2.text-lg,
+.admin-console main h2.text-base {
+  font-size: 1.2rem !important;
+  line-height: 1.4 !important;
+}
+
+.admin-console main h3.text-4xl,
+.admin-console main h3.text-3xl,
+.admin-console main h3.text-2xl,
+.admin-console main h3.text-xl,
+.admin-console main h3.text-lg,
+.admin-console main h3.text-base {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+}
+
+.admin-console main .text-lg {
+  font-size: 1.2rem !important;
+  line-height: 1.4 !important;
+}
+
+.admin-console main .text-base {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+}
+
+.admin-console main .text-sm {
+  font-size: .875rem !important;
+  line-height: 1.55 !important;
+}
+
+.admin-console main .text-xs,
+.admin-console main .text-\[9px\],
+.admin-console main .text-\[10px\],
+.admin-console main .text-\[11px\] {
+  font-size: .75rem !important;
+  line-height: 1.5 !important;
+}
+
+.admin-console main table thead th {
+  font-size: .75rem !important;
+  line-height: 1.5 !important;
+  letter-spacing: 0 !important;
+}
+
+.admin-console main table tbody td,
+.admin-console main table tbody td *:not(svg):not(path) {
+  font-size: .8125rem !important;
+  line-height: 1.5 !important;
+}
+
+.admin-console main input,
+.admin-console main select,
+.admin-console main textarea,
+.admin-console main button {
+  font-size: .8125rem !important;
+}
+
+html[lang="km"] .admin-console,
+html[lang="km"] .admin-console main,
+html[lang="km"] .admin-console main * {
+  font-family: 'Khmer OS Battambang', 'Battambang', sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
+html[lang="km"] .admin-console main h1,
+html[lang="km"] .admin-console main .text-4xl,
+html[lang="km"] .admin-console main .text-3xl {
+  font-size: 1.5rem !important;
+  line-height: 1.65 !important;
+}
+
+html[lang="km"] .admin-console main .text-2xl {
+  font-size: 1.35rem !important;
+  line-height: 1.7 !important;
+}
+
+html[lang="km"] .admin-console main .text-xl {
+  font-size: 1.15rem !important;
+  line-height: 1.7 !important;
+}
+
+html[lang="km"] .admin-console main h1.text-4xl,
+html[lang="km"] .admin-console main h1.text-3xl,
+html[lang="km"] .admin-console main h1.text-2xl,
+html[lang="km"] .admin-console main h1.text-xl {
+  font-size: 1.5rem !important;
+  line-height: 1.65 !important;
+}
+
+html[lang="km"] .admin-console main h2.text-4xl,
+html[lang="km"] .admin-console main h2.text-3xl,
+html[lang="km"] .admin-console main h2.text-2xl,
+html[lang="km"] .admin-console main h2.text-xl,
+html[lang="km"] .admin-console main h2.text-lg,
+html[lang="km"] .admin-console main h2.text-base {
+  font-size: 1.1rem !important;
+  line-height: 1.7 !important;
+}
+
+html[lang="km"] .admin-console main h3.text-4xl,
+html[lang="km"] .admin-console main h3.text-3xl,
+html[lang="km"] .admin-console main h3.text-2xl,
+html[lang="km"] .admin-console main h3.text-xl,
+html[lang="km"] .admin-console main h3.text-lg,
+html[lang="km"] .admin-console main h3.text-base {
+  font-size: .95rem !important;
+  line-height: 1.75 !important;
+}
+
+html[lang="km"] .admin-console main h2,
+html[lang="km"] .admin-console main .text-lg {
+  font-size: 1.1rem !important;
+  line-height: 1.7 !important;
+}
+
+html[lang="km"] .admin-console main h3,
+html[lang="km"] .admin-console main .text-base {
+  font-size: .95rem !important;
+  line-height: 1.75 !important;
+}
+
+html[lang="km"] .admin-console main .text-sm {
+  font-size: .8125rem !important;
+  line-height: 1.75 !important;
+}
+
+html[lang="km"] .admin-console main .text-xs,
+html[lang="km"] .admin-console main .text-\[9px\],
+html[lang="km"] .admin-console main .text-\[10px\],
+html[lang="km"] .admin-console main .text-\[11px\],
+html[lang="km"] .admin-console main table thead th {
+  font-size: .75rem !important;
+  line-height: 1.7 !important;
+}
+
+html[lang="km"] .admin-console main table tbody td,
+html[lang="km"] .admin-console main table tbody td *:not(svg):not(path),
+html[lang="km"] .admin-console main input,
+html[lang="km"] .admin-console main select,
+html[lang="km"] .admin-console main textarea,
+html[lang="km"] .admin-console main button {
+  font-size: .8125rem !important;
+  line-height: 1.7 !important;
+}
+
+/* Keep legacy pages that use light-only Tailwind utilities readable in dark mode. */
+html.dark .bg-white:not([class*="dark:bg-"]),
+html.dark .bg-white\/80:not([class*="dark:bg-"]),
+html.dark .bg-white\/95:not([class*="dark:bg-"]) {
+  background-color: #101b16;
+}
+
+html.dark .bg-slate-50:not([class*="dark:bg-"]),
+html.dark .bg-slate-50\/80:not([class*="dark:bg-"]),
+html.dark .bg-gray-50:not([class*="dark:bg-"]) {
+  background-color: #15221b;
+}
+
+html.dark .bg-slate-100:not([class*="dark:bg-"]),
+html.dark .bg-gray-100:not([class*="dark:bg-"]) {
+  background-color: #1b2a21;
+}
+
+html.dark .bg-\[\#f7f9f7\] {
+  background-color: #0b1510;
+}
+
+html.dark .text-slate-900:not([class*="dark:text-"]),
+html.dark .text-slate-800:not([class*="dark:text-"]),
+html.dark .text-slate-700:not([class*="dark:text-"]),
+html.dark .text-gray-900:not([class*="dark:text-"]),
+html.dark .text-gray-800:not([class*="dark:text-"]),
+html.dark .text-gray-700:not([class*="dark:text-"]) {
+  color: #e5ece6;
+}
+
+html.dark .text-slate-600:not([class*="dark:text-"]),
+html.dark .text-slate-500:not([class*="dark:text-"]),
+html.dark .text-gray-600:not([class*="dark:text-"]),
+html.dark .text-gray-500:not([class*="dark:text-"]) {
+  color: #b1bdb2;
+}
+
+html.dark .border-slate-200:not([class*="dark:border-"]),
+html.dark .border-slate-100:not([class*="dark:border-"]),
+html.dark .border-gray-200:not([class*="dark:border-"]),
+html.dark .border-gray-100:not([class*="dark:border-"]) {
+  border-color: #2a3b30;
+}
+
+html.dark .divide-slate-100 > :not(:last-child),
+html.dark .divide-gray-100 > :not(:last-child) {
+  border-color: #2a3b30;
+}
+
+html.dark .hover\:bg-slate-50:hover:not([class*="dark:hover:bg-"]),
+html.dark .hover\:bg-gray-50:hover:not([class*="dark:hover:bg-"]),
+html.dark .hover\:bg-slate-100:hover:not([class*="dark:hover:bg-"]),
+html.dark .hover\:bg-gray-100:hover:not([class*="dark:hover:bg-"]) {
+  background-color: #1b2a21;
+}
+
+img:not([data-motion="off"]),
+video:not([data-motion="off"]) {
+  animation: farmcraft-media-clip 12s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+
+@keyframes farmcraft-media-clip {
+  from {
+    scale: 1;
+    translate: 0 0;
+  }
+
+  to {
+    scale: 1.07;
+    translate: -0.5% -0.5%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  img:not([data-motion="off"]),
+  video:not([data-motion="off"]) {
+    animation: none;
+    scale: none;
+    translate: none;
+  }
+}
+
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark textarea,
+html.dark select {
+  color-scheme: dark;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #8190a4;
+}
+
+html.dark .bg-emerald-50:not([class*="dark:bg-"]),
+html.dark .bg-emerald-50\/60:not([class*="dark:bg-"]) {
+  background-color: #0c2b23;
+}
+
+html.dark .bg-amber-50:not([class*="dark:bg-"]) {
+  background-color: #352910;
+}
+
+html.dark .bg-rose-50:not([class*="dark:bg-"]) {
+  background-color: #351b24;
+}
+
+html.dark .bg-blue-50:not([class*="dark:bg-"]) {
+  background-color: #152b43;
+}
+
+html.dark .bg-orange-50:not([class*="dark:bg-"]) {
+  background-color: #382318;
+}
+
+html.dark .border-emerald-100:not([class*="dark:border-"]),
+html.dark .border-emerald-200:not([class*="dark:border-"]),
+html.dark .border-amber-200:not([class*="dark:border-"]),
+html.dark .border-rose-200:not([class*="dark:border-"]),
+html.dark .border-blue-200:not([class*="dark:border-"]),
+html.dark .border-orange-200:not([class*="dark:border-"]) {
+  border-color: #3b4b5d;
+}
+
+/* A number of storefront pages use literal palette colors instead of Tailwind
+   dark variants. Normalize those literals here so the theme remains consistent
+   across the public shopping and account flows. */
+html.dark .storefront-layout [class*="bg-[#e"],
+html.dark .storefront-layout [class*="bg-[#f"],
+html.dark .auth-layout [class*="bg-[#e"],
+html.dark .auth-layout [class*="bg-[#f"] {
+  background-color: #14231a !important;
+}
+
+html.dark .storefront-layout [class*="dark:bg-slate-900"] {
+  background-color: #14231a !important;
+}
+
+html.dark .storefront-layout [class*="dark:bg-slate-950"] {
+  background-color: #0c1711 !important;
+}
+
+html.dark .storefront-layout [class*="text-[#"]:not([class*="dark:text-"]):not([class*="bg-[#d"]):not([class*="bg-[#e"]):not([class*="bg-[#f"]),
+html.dark .auth-layout [class*="text-[#"]:not([class*="dark:text-"]):not([class*="bg-[#d"]):not([class*="bg-[#e"]):not([class*="bg-[#f"]) {
+  color: #d5e1d7 !important;
+}
+
+html.dark .storefront-layout [class~="text-[#9a4034]"]:not([class*="dark:text-"]):not([class*="bg-[#d"]):not([class*="bg-[#e"]):not([class*="bg-[#f"]),
+html.dark .storefront-layout [class~="text-[#a34b3f]"]:not([class*="dark:text-"]):not([class*="bg-[#d"]):not([class*="bg-[#e"]):not([class*="bg-[#f"]),
+html.dark .storefront-layout [class~="text-[#a34e39]"]:not([class*="dark:text-"]):not([class*="bg-[#d"]):not([class*="bg-[#e"]):not([class*="bg-[#f"]),
+html.dark .auth-layout [class~="text-[#9a4034]"]:not([class*="dark:text-"]):not([class*="bg-[#d"]):not([class*="bg-[#e"]):not([class*="bg-[#f"]),
+html.dark .auth-layout [class~="text-[#a34b3f]"]:not([class*="dark:text-"]):not([class*="bg-[#d"]):not([class*="bg-[#e"]):not([class*="bg-[#f"]),
+html.dark .auth-layout [class~="text-[#a34e39]"]:not([class*="dark:text-"]):not([class*="bg-[#d"]):not([class*="bg-[#e"]):not([class*="bg-[#f"]) {
+  color: #fda4a4 !important;
+}
+
+html.dark .storefront-layout [class*="border-[#e"],
+html.dark .storefront-layout [class*="border-[#f"],
+html.dark .auth-layout [class*="border-[#e"],
+html.dark .auth-layout [class*="border-[#f"] {
+  border-color: #2c4033 !important;
+}
+
+/* Keep controls, links and keyboard focus easy to see in either theme. */
+:focus-visible {
+  outline: 2px solid #65b98b;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #b9d58f;
+  color: #173222;
+}
+
+html.dark ::selection {
+  background: #397b58;
+  color: #f4faf5;
+}
+
+/* Admin pages include a few fixed light-theme utility colors. Keep those
+   readable when the shared admin workspace switches to its dark palette. */
+html.dark .admin-console main [class~="bg-white"] {
+  background-color: #13251b !important;
+}
+
+html.dark .admin-console main [class~="bg-slate-50"] {
+  background-color: #192c22 !important;
+}
+
+html.dark .admin-console main [class~="bg-slate-100"] {
+  background-color: #20352a !important;
+}
+
+html.dark .admin-console main [class~="border-slate-200"],
+html.dark .admin-console main [class~="border-slate-200/80"] {
+  border-color: #30483a !important;
+}
+
+html.dark .admin-console main [class~="text-slate-900"],
+html.dark .admin-console main [class~="text-slate-800"],
+html.dark .admin-console main [class~="text-slate-700"] {
+  color: #edf4ee !important;
+}
+
+html.dark .admin-console main [class~="text-slate-600"],
+html.dark .admin-console main [class~="text-slate-500"] {
+  color: #c0cec4 !important;
+}
+
+html.dark .admin-console main [class~="text-slate-400"] {
+  color: #9aada0 !important;
+}
+
+html.dark .admin-console main [class~="text-emerald-950"],
+html.dark .admin-console main [class~="text-emerald-900"] {
+  color: #bbf7d0 !important;
+}
+
+html.dark .admin-console main [class~="text-emerald-800"] {
+  color: #86efac !important;
+}
+
+html.dark .admin-console main [class~="text-emerald-700"] {
+  color: #6ee7b7 !important;
+}
+
+html.dark .admin-console main [class~="bg-emerald-50"] {
+  background-color: #153528 !important;
+}
+
+html.dark .admin-console main [class~="border-emerald-200"] {
+  border-color: #286349 !important;
+}
+
+html.dark .admin-console main [class*="text-[#1d392a]"],
+html.dark .admin-console main [class*="text-[#24382a]"],
+html.dark .admin-console main [class*="text-[#26372c]"],
+html.dark .admin-console main [class*="text-[#263a2d]"],
+html.dark .admin-console main [class*="text-[#244b35]"],
+html.dark .admin-console main [class*="text-[#536a58]"],
+html.dark .admin-console main [class*="text-[#526b58]"],
+html.dark .admin-console main [class*="text-[#6e816f]"],
+html.dark .admin-console main [class*="text-[#718075]"],
+html.dark .admin-console main [class*="text-[#798579]"],
+html.dark .admin-console main [class*="text-[#829083]"],
+html.dark .admin-console main [class*="text-[#8a948b]"],
+html.dark .admin-console main [class*="text-[#647563]"] {
+  color: #d2ded5 !important;
+}
+
+html.dark .admin-console main [class*="bg-[#fffaf0]"],
+html.dark .admin-console main [class*="bg-[#f7f0df]"],
+html.dark .admin-console main [class*="bg-[#f8f1e2]"],
+html.dark .admin-console main [class*="bg-[#e9f1e9]"],
+html.dark .admin-console main [class*="bg-[#eaf1f5]"],
+html.dark .admin-console main [class*="bg-[#f3f6f1]"] {
+  background-color: #1d3025 !important;
+}
+
+html.dark .admin-console main [class*="border-[#e5eae2]"],
+html.dark .admin-console main [class*="border-[#dfe8df]"] {
+  border-color: #30483a !important;
 }
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -22,19 +783,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.25);
+  background: #d4a373;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.5);
-}
-
-@keyframes spinSlow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.animate-spin-slow {
-  animation: spinSlow 12s linear infinite;
+  background: #bc8a5f;
 }

@@ -15,9 +15,14 @@ import {
   Plus
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { Pagination } from '../../components/common/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 export const DashboardPage = () => {
   const { products, vehicles } = useStore();
+  const { t } = useLanguage();
+  const productPage = usePagination(products);
 
   return (
     <div className="space-y-6">
@@ -252,7 +257,7 @@ export const DashboardPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
-              {products.slice(0, 5).map((p) => (
+              {productPage.paginatedItems.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                   <td className="p-3 font-mono text-slate-500 font-bold">{p.code}</td>
                   <td className="p-3 font-bold flex items-center gap-2">
@@ -277,6 +282,7 @@ export const DashboardPage = () => {
             </tbody>
           </table>
         </div>
+        <Pagination currentPage={productPage.currentPage} pageCount={productPage.pageCount} totalItems={productPage.totalItems} pageSize={productPage.pageSize} onPageChange={productPage.setCurrentPage} onPageSizeChange={productPage.setPageSize} t={t} />
 
       </div>
 

@@ -1,30 +1,25 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
-  BarChart2,
-  ShoppingBag,
   Package,
-  Users,
-  CreditCard,
-  Truck,
-  Car,
-  Share2,
+  LogOut,
   Settings,
   HelpCircle,
-  Plus,
   ChevronDown,
-  Sparkles,
   Sprout,
-  Crown
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
+import { useAuth } from '../../features/auth/hooks/useAuth';
+import { useLanguage } from '../../context/LanguageContext';
 import logoImg from '../../assets/images/craftfarm-logo.png';
 
 export const DashboardSidebar = () => {
   const location = useLocation();
-  const { currentUser, activeRole, switchRole } = useStore();
-
+  const navigate = useNavigate();
+  const { currentUser, activeRole } = useStore();
+  const { signOut } = useAuth();
+  const { t } = useLanguage();
   const isActive = (path) => location.pathname === path;
 
   return (
@@ -42,81 +37,35 @@ export const DashboardSidebar = () => {
             <div>
               <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100 font-serif">CraftFarm</h3>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider block -mt-0.5">
-                {activeRole} Studio
+                {t('sellerStudio')}
               </span>
             </div>
           </Link>
         </div>
 
-        {/* Role Toggle Pill */}
-        <div className="p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 flex text-xs font-bold">
-          <button
-            onClick={() => switchRole('SELLER')}
-            className={`flex-1 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1 ${
-              activeRole === 'SELLER'
-                ? 'bg-emerald-500 text-white shadow-sm font-extrabold'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <Sprout className="w-3.5 h-3.5" />
-            <span>Farmer</span>
-          </button>
-
-          <button
-            onClick={() => switchRole('ADMIN')}
-            className={`flex-1 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1 ${
-              activeRole === 'ADMIN'
-                ? 'bg-emerald-500 text-white shadow-sm font-extrabold'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <Crown className="w-3.5 h-3.5" />
-            <span>Admin</span>
-          </button>
+        <div className="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          <Sprout className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <span>{t('sellerWorkspace')}</span>
         </div>
 
-        {/* MAIN MENU Section (Exact items from media_1790674953093.png) */}
+        {/* Primary farm workflows */}
         <div className="space-y-4">
           <div>
             <div className="px-3 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
-              MAIN MENU
+              {t('sellerMainMenu')}
             </div>
             <nav className="space-y-1">
               
               <Link
-                to="/dashboard/admin"
+                to="/dashboard/seller"
                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                  isActive('/dashboard/admin') || isActive('/dashboard')
+                  isActive('/dashboard/admin') || isActive('/dashboard/seller') || isActive('/dashboard')
                     ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
-                <span>Dashboard</span>
-              </Link>
-
-              <Link
-                to="/dashboard/seller"
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                  isActive('/dashboard/seller')
-                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <BarChart2 className="w-4 h-4" />
-                <span>Overview</span>
-              </Link>
-
-              <Link
-                to="/dashboard/orders"
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                  isActive('/dashboard/orders')
-                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span>Orders</span>
+                <span>{t('sellerDashboard')}</span>
               </Link>
 
               <Link
@@ -128,7 +77,7 @@ export const DashboardSidebar = () => {
                 }`}
               >
                 <Package className="w-4 h-4" />
-                <span>Products</span>
+                <span>{t('sellerProducts')}</span>
               </Link>
 
               <Link
@@ -139,29 +88,21 @@ export const DashboardSidebar = () => {
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <Users className="w-4 h-4" />
-                <span>Farmers</span>
+                <Package className="w-4 h-4" />
+                <span>{t('sellerInventory')}</span>
               </Link>
 
-              <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                <CreditCard className="w-4 h-4" />
-                <span>Payments</span>
-              </div>
-
-              <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                <Truck className="w-4 h-4" />
-                <span>Delivery</span>
-              </div>
-
-              <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                <Car className="w-4 h-4" />
-                <span>Vehicles</span>
-              </div>
-
-              <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                <Share2 className="w-4 h-4" />
-                <span>Social content</span>
-              </div>
+              <Link
+                to="/dashboard/seller#analytics"
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  location.hash === '#analytics'
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                <span>{t('sellerAnalytics')}</span>
+              </Link>
 
             </nav>
           </div>
@@ -169,54 +110,41 @@ export const DashboardSidebar = () => {
           {/* OTHER Section */}
           <div>
             <div className="px-3 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
-              OTHER
+              {t('sellerOther')}
             </div>
             <nav className="space-y-1">
-              <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+              <Link to="/profile" className="flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
                 <Settings className="w-4 h-4" />
-                <span>Settings</span>
-              </div>
+                <span>{t('sellerSettings')}</span>
+              </Link>
 
-              <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+              <button onClick={async () => { await signOut(); navigate('/'); }} className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <LogOut className="w-4 h-4" />
+                <span>{t('sellerLogout')}</span>
+              </button>
+
+              <Link to="/contact" className="flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
                 <HelpCircle className="w-4 h-4" />
-                <span>Help</span>
-              </div>
+                <span>{t('sellerHelp')}</span>
+              </Link>
             </nav>
           </div>
         </div>
       </div>
 
-      {/* Bottom Setup Store Widget & User Profile (Exact layout from media_1790674953093.png) */}
+      {/* Active seller profile */}
       <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-        
-        {/* SETUP STORE Card */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-700 dark:text-slate-200">
-            <span>SETUP STORE</span>
-            <span className="text-emerald-600 dark:text-emerald-400">6 / 7</span>
-          </div>
-          
-          <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full w-[85%]" />
-          </div>
-
-          <button className="w-full py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm">
-            Setup
-          </button>
-        </div>
-
-        {/* Active User Footer Card */}
         <div className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold">
           <div className="flex items-center gap-2 overflow-hidden">
-            <div className="w-7 h-7 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">
-              {currentUser.avatar}
+            <div className="w-7 h-7 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+              {currentUser?.avatar || currentUser?.full_name?.charAt(0) || currentUser?.username?.charAt(0) || 'F'}
             </div>
             <div className="truncate">
-              <span className="font-extrabold block truncate">{currentUser.full_name}</span>
-              <span className="text-[10px] text-slate-400 font-normal block truncate">Admin</span>
+              <span className="font-extrabold block truncate">{currentUser?.full_name || currentUser?.username}</span>
+              <span className="text-[10px] text-slate-400 font-normal block truncate">{activeRole}</span>
             </div>
           </div>
-          <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
         </div>
 
       </div>

@@ -1,97 +1,74 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Star, CheckCircle, ChevronDown, Tag } from 'lucide-react';
+import React from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowUpRight, Leaf, ShoppingCart, Star } from 'lucide-react';
 import { useStore } from '../../../context/StoreContext';
+import { useLanguage } from '../../../context/LanguageContext';
 
 export const ProductCard = ({ product }) => {
-  const { addToCart } = useStore();
-  const [selectedUnit, setSelectedUnit] = useState(product.unit);
-  const [selectedDiscount, setSelectedDiscount] = useState(product.discount || 'Discount');
-
-  const isActive = product.status === 'Published';
+  const { addToCart, activeRole } = useStore();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const stockQuantity = Number(product.stock_quantity ?? product.stockQuantity ?? 0);
+  const categoryName = product.category_name || product.categoryName || product.category?.name || 'Farm goods';
+  const price = Number(product.price || 0);
+  const sellerName = product.seller_name || product.seller?.displayName || product.seller?.username || 'Local farm';
+  const rating = Number(product.rating || 0);
+  const handleAddToCart = () => {
+    if (activeRole === 'GUEST') {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+    if (activeRole === 'BUYER') addToCart(product);
+  };
+  const addLabel = activeRole === 'GUEST'
+    ? t('prodSignInToAdd')
+    : activeRole === 'BUYER'
+      ? t('prodAddToCart')
+      : t('prodBuyerRequired');
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row overflow-hidden p-4 gap-4">
-      
-      {/* Product Image Thumbnail */}
-      <div className="relative w-full sm:w-44 h-40 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
-        <img
-          src={product.image_url}
-          alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        {product.is_organic && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-white shadow">
-            🌱 Organic
-          </span>
+    <article className="group flex h-full flex-col overflow-hidden border border-[#e6e9e1] bg-white transition duration-200 hover:border-[#98ad8e] hover:shadow-[0_18px_42px_-28px_rgba(35,60,41,0.42)]">
+      <Link to={`/products/${product.id}`} className="relative block aspect-[1.18] overflow-hidden bg-[#eff2e9]">
+        {product.image_url || product.imageUrl ? (
+          <img src={product.image_url || product.imageUrl} alt={product.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-[#78936f]"><Leaf className="h-10 w-10" /></div>
         )}
-      </div>
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1 bg-white/95 px-2.5 py-1.5 text-[11px] font-bold text-[#315a36] shadow-sm"><Leaf className="h-3.5 w-3.5" /> {product.is_organic ? t('prodOrganic') : t('prodFarmFresh')}</span>
+        <span className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center bg-white text-[#315a36] shadow-sm transition group-hover:bg-[#285331] group-hover:text-white" aria-hidden="true"><ArrowUpRight className="h-4 w-4" /></span>
+      </Link>
 
-      {/* Product Content Details */}
-      <div className="flex-1 flex flex-col justify-between space-y-3">
-        <div className="space-y-1.5">
-          
-          <div className="flex items-center justify-between">
-            <Link to={`/products/${product.id}`}>
-              <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 hover:text-emerald-600 transition-colors">
-                {product.name}
-              </h3>
-            </Link>
-
-            {/* Active / Inactive Badge (Matching media_1790674967645.png) */}
-            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold border ${
-              isActive
-                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border-emerald-300 dark:border-emerald-800'
-                : 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 border-purple-300 dark:border-purple-800'
-            }`}>
-              <CheckCircle className="w-3 h-3" />
-              {isActive ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-            Fresh, seasonal ingredients crafted for a light and refreshing dining experience.
-          </p>
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
+        <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-[#74806f]">
+          <span className="truncate">{categoryName}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-[#916f2f]"><Star className={`h-3.5 w-3.5 ${rating > 0 ? 'fill-current' : 'text-[#cbd1c6]'}`} /> {rating > 0 ? `${rating.toFixed(1)}${product.reviews_count ? ` (${product.reviews_count})` : ''}` : t('prodNew')}</span>
         </div>
+        <Link to={`/products/${product.id}`} className="mt-1 block">
+          <h2 className="line-clamp-1 text-[17px] font-bold text-[#24392b] transition hover:text-[#416441]">{product.name}</h2>
+        </Link>
+        <p className="mt-1.5 line-clamp-1 text-xs text-[#778176]">{t('prodGrownBy')} {sellerName}</p>
+        <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-[#69736a]">{product.description || 'Fresh from local farms and ready for your table.'}</p>
 
-        {/* Dropdown Selectors & Action Bar */}
-        <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-          
-          {/* Price & Discount Dropdown Controls */}
-          <div className="flex items-center gap-2">
-            <div className="px-3 py-1 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 flex-1">
-              <span>Price: ${product.price.toFixed(0)}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+        <div className="mt-auto pt-4">
+          <div className="flex items-end justify-between gap-3 border-t border-[#edf0ea] pt-3.5">
+            <div>
+              <p className="text-xl font-bold leading-none text-[#24392b]">${price.toFixed(2)}<span className="ml-1 text-xs font-medium text-[#778176]">/ {product.unit || 'item'}</span></p>
+              <p className="mt-2 text-[11px] text-[#778176]">{stockQuantity > 0 ? t('prodAvailableCount').replace('{count}', String(stockQuantity)).replace('{unit}', product.unit || t('prodUnitItem')) : t('prodUnavailable')}</p>
             </div>
-
-            <div className="px-3 py-1 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2">
-              <span>{product.discount || 'Discount'}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
-            </div>
-          </div>
-
-          {/* Rating & Published Menu Action Button (Exact green pill from media_1790674967645.png) */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
-              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-              <span>{product.rating}</span>
-              <span className="text-slate-400 font-normal text-[11px]">
-                ({product.reviews_count} Reviews)
-              </span>
-            </div>
-
             <button
-              onClick={() => addToCart(product)}
-              className="px-5 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-md shadow-emerald-500/25 transition-all active:scale-95 whitespace-nowrap"
+              type="button"
+              onClick={handleAddToCart}
+              disabled={stockQuantity <= 0 || (activeRole !== 'BUYER' && activeRole !== 'GUEST')}
+              aria-label={`${addLabel}: ${product.name}`}
+              className="inline-flex h-10 items-center justify-center gap-2 bg-[#285331] px-3.5 text-xs font-bold text-white transition hover:bg-[#1c4228] disabled:cursor-not-allowed disabled:bg-[#9aa69a]"
+              title={stockQuantity > 0 ? addLabel : t('prodUnavailable')}
             >
-              Published Menu
+              <ShoppingCart className="h-4 w-4" /><span>{addLabel}</span>
             </button>
           </div>
-
         </div>
-
       </div>
-
-    </div>
+    </article>
   );
 };

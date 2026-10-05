@@ -1,20 +1,43 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { translations } from '../i18n/translations';
 
 const LanguageContext = createContext();
 
+const getStoredLanguage = () => {
+  try {
+    const savedLanguage = localStorage.getItem('craftfarm_lang');
+    return savedLanguage === 'km' || savedLanguage === 'en' ? savedLanguage : 'en';
+  } catch {
+    return 'en';
+  }
+};
+
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState(() => {
-    return localStorage.getItem('craftfarm_lang') || 'en';
-  });
+  const [language, setLanguage] = useState(getStoredLanguage);
+
+  useEffect(() => {
+    const normalizedLanguage = language === 'km' ? 'km' : 'en';
+    document.documentElement.setAttribute('lang', normalizedLanguage);
+    try {
+      localStorage.setItem('craftfarm_lang', normalizedLanguage);
+    } catch {
+      // Ignore storage failures in restricted browser contexts.
+    }
+  }, [language]);
 
   const toggleLanguage = (lang) => {
     const nextLang = lang || (language === 'en' ? 'km' : 'en');
-    setLanguage(nextLang);
-    localStorage.setItem('craftfarm_lang', nextLang);
+    setLanguage(nextLang === 'km' ? 'km' : 'en');
+  };
+
+  const t = (key) => {
+    const activeLanguage = language === 'km' ? 'km' : 'en';
+    const langDict = translations[activeLanguage] || translations.en;
+    return langDict[key] || translations.en[key] || key;
   };
 
   return (
-    <LanguageContext.Provider value={{ language, toggleLanguage, setLanguage }}>
+    <LanguageContext.Provider value={{ language, toggleLanguage, setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );
