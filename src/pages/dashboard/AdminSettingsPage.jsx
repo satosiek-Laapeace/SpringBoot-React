@@ -1,27 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Camera, CheckCircle2, LoaderCircle, Save, Settings2, UserRound } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, LoaderCircle, Settings2, UserRound } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 import { updateUserProfileAPI, uploadUserProfilePictureAPI } from '../../features/user-profile/services/profileApi';
-import {
-  fetchMarketplaceSettingsAPI,
-  updateMarketplaceSettingsAPI,
-} from '../../features/settings/services/marketplaceSettingsApi';
-
-const DEFAULT_SETTINGS = {
-  cardPaymentsEnabled: true,
-  khqrPaymentsEnabled: true,
-  bankTransferEnabled: true,
-  cashOnDeliveryEnabled: true,
-};
-
-const PAYMENT_OPTIONS = [
-  { key: 'cardPaymentsEnabled', titleKey: 'settingsCardPayments', descriptionKey: 'settingsCardPaymentsDescription' },
-  { key: 'khqrPaymentsEnabled', titleKey: 'settingsBakong', descriptionKey: 'settingsBakongDescription' },
-  { key: 'bankTransferEnabled', titleKey: 'settingsBankTransfer', descriptionKey: 'settingsBankTransferDescription' },
-  { key: 'cashOnDeliveryEnabled', titleKey: 'settingsCashDelivery', descriptionKey: 'settingsCashDeliveryDescription' },
-];
+import { fetchMarketplaceSettingsAPI } from '../../features/settings/services/marketplaceSettingsApi';
 
 export const AdminSettingsPage = () => {
   const { user, updateCurrentUserProfile } = useAuth();
@@ -34,10 +17,8 @@ export const AdminSettingsPage = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [pictureLoadFailed, setPictureLoadFailed] = useState(false);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const profilePictureUrl = user?.profilePictureUrl || user?.profile_picture_url || user?.picture || user?.imageUrl || '';
@@ -49,11 +30,10 @@ export const AdminSettingsPage = () => {
     fetchMarketplaceSettingsAPI()
       .then(result => {
         if (!active) return;
-        if (!result || PAYMENT_OPTIONS.some(option => typeof result[option.key] !== 'boolean')) {
+        if (!result || typeof result.abaPaywayPaymentsEnabled !== 'boolean') {
           throw new Error('The marketplace settings service returned an unsupported response.');
         }
         setSettings(result);
-        setSettingsLoaded(true);
       })
       .catch(loadError => {
         if (active) setError(loadError.message || 'Marketplace settings could not be loaded.');
@@ -65,22 +45,6 @@ export const AdminSettingsPage = () => {
       active = false;
     };
   }, []);
-
-  const saveSettings = async event => {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    setNotice('');
-    try {
-      const savedSettings = await updateMarketplaceSettingsAPI(settings);
-      setSettings(savedSettings);
-      setNotice(t('settingsPaymentsSaved'));
-    } catch (saveError) {
-      setError(saveError.message || 'Marketplace settings could not be saved.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const saveProfile = async event => {
     event.preventDefault();
@@ -198,43 +162,30 @@ export const AdminSettingsPage = () => {
         <p className="mt-3 text-[11px] text-slate-500">{t('settingsSavedLocally')}</p>
       </section>
 
-      <form onSubmit={saveSettings} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Settings2 className="h-5 w-5" /></span>
             <div>
               <h2 className="text-sm font-bold text-slate-900">{t('settingsPaymentMethods')}</h2>
-              <p className="text-xs text-slate-500">{t('settingsPaymentDescription')}</p>
+              <p className="text-xs text-slate-500">ABA PayWay is the only supported checkout provider.</p>
             </div>
           </div>
-          <button type="submit" disabled={loading || saving || !settingsLoaded} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-xs font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60">
-            {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? t('adminSaving') : t('settingsSavePayments')}
-          </button>
         </div>
 
         {loading ? (
           <div role="status" className="flex min-h-40 items-center justify-center text-sm text-slate-500"><LoaderCircle className="mr-2 h-4 w-4 animate-spin" />{t('settingsLoading')}</div>
         ) : (
-          <div className="mt-5 divide-y divide-slate-100">
-            {PAYMENT_OPTIONS.map(option => (
-              <label key={option.key} className="flex cursor-pointer items-center justify-between gap-4 py-4">
-                <span>
-                  <span className="block text-sm font-semibold text-slate-800">{t(option.titleKey)}</span>
-                  <span className="mt-1 block text-xs text-slate-500">{t(option.descriptionKey)}</span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={settings[option.key]}
-                  onChange={event => setSettings(current => ({ ...current, [option.key]: event.target.checked }))}
-                  disabled={saving}
-                  className="h-4 w-4 shrink-0 accent-emerald-700"
-                />
-              </label>
-            ))}
+          <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-800">ABA PayWay</p>
+            <p role={settings?.abaPaywayPaymentsEnabled ? 'status' : 'alert'} className={`mt-1 text-xs ${settings?.abaPaywayPaymentsEnabled ? 'text-emerald-700' : 'text-amber-700'}`}>
+              {settings?.abaPaywayPaymentsEnabled
+                ? 'Configured and available for checkout.'
+                : 'Unavailable. Configure the ABA merchant credentials and callback URLs in the backend environment.'}
+            </p>
           </div>
         )}
-      </form>
+      </section>
     </main>
   );
 };

@@ -1,30 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, Banknote, Check, CheckCircle2, CreditCard, Landmark, Loader2,
-  LockKeyhole, MapPin, PackageCheck, ShieldCheck, ShoppingBag
+  ArrowLeft, Check, CheckCircle2, Landmark, Loader2, MapPin, ShieldCheck, ShoppingBag
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { fetchCartAPI } from '../features/cart/services/cartApi';
-import {
-  createCardCheckoutAPI, createKhqrPaymentAPI, payByBankTransferAPI,
-  payCashOnDeliveryAPI, verifyKhqrPaymentAPI
-} from '../features/checkout/services/checkoutApi';
+import { createAbaPaywayCheckoutAPI } from '../features/checkout/services/checkoutApi';
 import { createOrderAPI } from '../features/orders/services/orderApi';
 import { fetchAddressesAPI } from '../features/user-profile/services/profileApi';
 import { fetchMarketplaceSettingsAPI } from '../features/settings/services/marketplaceSettingsApi';
 
 const DELIVERY_SLOTS = ['Morning · 8:00–11:00', 'Midday · 11:00–14:00', 'Afternoon · 14:00–18:00'];
-const PAYMENT_OPTIONS = [
-  { id: 'CARD', settingsKey: 'cardPaymentsEnabled', title: 'Card', detail: 'Secure checkout powered by Stripe', Icon: CreditCard },
-  { id: 'KHQR', settingsKey: 'khqrPaymentsEnabled', title: 'Bakong KHQR', detail: 'Scan a secure, order-specific QR code', Icon: Landmark },
-  { id: 'BANK', settingsKey: 'bankTransferEnabled', title: 'Bank transfer', detail: 'ABA, ACLEDA, Wing and more', Icon: Landmark },
-  { id: 'COD', settingsKey: 'cashOnDeliveryEnabled', title: 'Cash on delivery', detail: 'Pay when your harvest arrives', Icon: Banknote },
-];
 
 export const CheckoutPage = () => {
-  const navigate = useNavigate();
-  const { cart, products, clearCart } = useStore();
+  const { cart, products } = useStore();
   const [remoteCart, setRemoteCart] = useState(null);
   const [cartLoaded, setCartLoaded] = useState(false);
   const [addressList, setAddressList] = useState([]);
@@ -34,13 +23,9 @@ export const CheckoutPage = () => {
   const [addressesLoading, setAddressesLoading] = useState(true);
   const [addressError, setAddressError] = useState('');
   const [deliverySlot, setDeliverySlot] = useState(DELIVERY_SLOTS[0]);
-  const [paymentMethod, setPaymentMethod] = useState('CARD');
-  const [bankReference, setBankReference] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [pendingOrder, setPendingOrder] = useState(null);
-  const [khqrPayment, setKhqrPayment] = useState(null);
-  const [khqrStatus, setKhqrStatus] = useState('PENDING');
   const [orderCreationUncertain, setOrderCreationUncertain] = useState(false);
 
   useEffect(() => {
@@ -70,7 +55,7 @@ export const CheckoutPage = () => {
           : 'The server returned an invalid address list.');
       }
       if (settingsResult.status === 'fulfilled' && settingsResult.value
-        && PAYMENT_OPTIONS.every(option => typeof settingsResult.value[option.settingsKey] === 'boolean')) {
+        && typeof settingsResult.value.abaPaywayPaymentsEnabled === 'boolean') {
         setPaymentSettings(settingsResult.value);
       } else {
         setPaymentSettingsError(settingsResult.status === 'rejected'
@@ -87,13 +72,7 @@ export const CheckoutPage = () => {
     return () => { isCurrent = false; };
   }, []);
 
-  const availablePaymentOptions = useMemo(
-    () => paymentSettings ? PAYMENT_OPTIONS.filter(option => paymentSettings[option.settingsKey]) : [],
-    [paymentSettings],
-  );
-  const effectivePaymentMethod = availablePaymentOptions.some(option => option.id === paymentMethod)
-    ? paymentMethod
-    : (availablePaymentOptions[0]?.id || '');
+  const abaPaywayEnabled = paymentSettings?.abaPaywayPaymentsEnabled === true;
 
   const cartItems = cartLoaded ? remoteCart : cart;
   const orderLines = useMemo(() => cartItems.map((item) => {
@@ -103,45 +82,15 @@ export const CheckoutPage = () => {
   }).filter(Boolean), [cartItems, products]);
   const subtotal = orderLines.reduce((total, item) => total + Number(item.price || 0) * item.quantity, 0);
 
-  useEffect(() => {
-    const orderId = pendingOrder?.id ?? pendingOrder?.orderId;
-    if (!khqrPayment || orderId == null || khqrStatus !== 'PENDING') return undefined;
-
-    let isCurrent = true;
-    const checkPayment = async () => {
-      try {
-        const result = await verifyKhqrPaymentAPI(orderId);
-        if (!isCurrent) return;
-        const status = result?.status || 'PENDING';
-        setKhqrStatus(status);
-        if (status === 'PAID') {
-          clearCart();
-          navigate(`/order-success/${orderId}`, { state: { order: pendingOrder, payment: result } });
-        } else if (status !== 'PENDING') {
-          setErrorMessage(`Bakong payment is ${status.toLowerCase()}. Start a new order to try again.`);
-        }
-      } catch (error) {
-        if (isCurrent) setErrorMessage(error.message || 'Bakong payment status could not be checked.');
-      }
-    };
-
-    const intervalId = window.setInterval(checkPayment, 5000);
-    return () => {
-      isCurrent = false;
-      window.clearInterval(intervalId);
-    };
-  }, [khqrPayment, khqrStatus, pendingOrder, clearCart, navigate]);
-
   const handlePlaceOrder = async (event) => {
     event.preventDefault();
     setErrorMessage('');
     if (!paymentSettings) return setErrorMessage(paymentSettingsError || 'Payment options are not available right now.');
-    if (!effectivePaymentMethod) {
-      return setErrorMessage('Choose an available payment method to continue.');
+    if (!abaPaywayEnabled) {
+      return setErrorMessage('ABA PayWay is not available right now. Please try again later.');
     }
     if (!orderLines.length) return setErrorMessage('Your cart is empty. Add a harvest before checkout.');
     if (!selectedAddressId) return setErrorMessage('Choose a delivery address to continue.');
-    if (effectivePaymentMethod === 'BANK' && !bankReference.trim()) return setErrorMessage('Enter your bank transfer reference.');
 
     setIsSubmitting(true);
     let order = pendingOrder;
@@ -166,39 +115,21 @@ export const CheckoutPage = () => {
 
       const orderId = order.id ?? order.orderId;
       if (orderId == null) throw new Error('The order was created without an order number. Contact support before retrying.');
-      let payment;
-      if (effectivePaymentMethod === 'CARD') {
-        const checkout = await createCardCheckoutAPI(orderId);
-        if (!checkout?.checkoutUrl) throw new Error('Secure card checkout could not be opened. Try another payment option.');
-        window.location.assign(checkout.checkoutUrl);
-        return;
+      const checkout = await createAbaPaywayCheckoutAPI(orderId);
+      let paymentUrl;
+      try {
+        paymentUrl = new URL(checkout?.checkoutUrl);
+      } catch {
+        throw new Error('ABA PayWay returned an invalid payment link.');
       }
-      if (effectivePaymentMethod === 'KHQR') {
-        if (!khqrPayment || khqrStatus !== 'PENDING') {
-          const qrPayment = await createKhqrPaymentAPI(orderId);
-          if (!qrPayment?.qrString || !qrPayment?.md5 || !qrPayment?.qrSvg) {
-            throw new Error('Bakong did not return a complete payment QR. Your order remains pending; contact support before retrying.');
-          }
-          setKhqrPayment(qrPayment);
-          setKhqrStatus('PENDING');
-          return;
-        }
-
-        payment = await verifyKhqrPaymentAPI(orderId);
-        setKhqrStatus(payment?.status || 'PENDING');
-        if (payment?.status === 'PAID') {
-          clearCart();
-          navigate(`/order-success/${orderId}`, { state: { order, payment } });
-        } else if (payment?.status !== 'PENDING') {
-          setErrorMessage(`Bakong payment is ${String(payment?.status || 'unavailable').toLowerCase()}.`);
-        }
-        return;
+      if (paymentUrl.protocol !== 'https:'
+        || !paymentUrl.hostname.endsWith('.payway.com.kh')
+        || paymentUrl.port
+        || paymentUrl.username
+        || paymentUrl.password) {
+        throw new Error('ABA PayWay returned a payment link outside its official domain.');
       }
-      if (effectivePaymentMethod === 'BANK') payment = await payByBankTransferAPI(orderId, bankReference.trim());
-      else payment = await payCashOnDeliveryAPI(orderId);
-
-      clearCart();
-      navigate(`/order-success/${orderId}`, { state: { order, payment } });
+      window.location.assign(paymentUrl.href);
     } catch (error) {
       if (!order && !pendingOrder) setOrderCreationUncertain(true);
       const orderId = order?.id ?? order?.orderId;
@@ -255,41 +186,16 @@ export const CheckoutPage = () => {
             </section>
 
             <section aria-labelledby="payment-heading" className="border-t border-[#e3e9df] pt-7">
-              <div className="mb-4 flex items-center gap-3"><span className="grid h-8 w-8 place-items-center bg-[#f4ead9] text-sm font-bold text-[#916f2f]">2</span><div><h2 id="payment-heading" className="text-lg font-bold text-[#24392b]">Payment method</h2><p className="text-xs text-[#7b8679]">Choose how you’d like to pay</p></div></div>
+              <div className="mb-4 flex items-center gap-3"><span className="grid h-8 w-8 place-items-center bg-[#f4ead9] text-sm font-bold text-[#916f2f]">2</span><div><h2 id="payment-heading" className="text-lg font-bold text-[#24392b]">Payment method</h2><p className="text-xs text-[#7b8679]">Pay securely through ABA PayWay</p></div></div>
               {paymentSettingsError && <p role="alert" className="mb-3 border border-[#e9c5bd] bg-[#fff3ef] px-4 py-3 text-sm text-[#9a4034]">{paymentSettingsError}</p>}
-              {paymentSettings && !availablePaymentOptions.length && <p role="alert" className="mb-3 border border-[#e9c5bd] bg-[#fff3ef] px-4 py-3 text-sm text-[#9a4034]">The marketplace is not accepting payments right now. Please try again later.</p>}
-              <div role="radiogroup" aria-label="Payment method" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {availablePaymentOptions.map(({ id, title, detail, Icon }) => {
-                  const selected = effectivePaymentMethod === id;
-                  return <button key={id} type="button" role="radio" aria-checked={selected} disabled={Boolean(khqrPayment) && khqrStatus === 'PENDING' && !selected} onClick={() => setPaymentMethod(id)} className={`min-h-28 border p-4 text-left transition ${selected ? 'border-[#315a36] bg-[#f1f5ed]' : 'border-[#e2e7de] bg-white hover:border-[#aebfa7]'} disabled:cursor-not-allowed disabled:opacity-50`}>
-                    <span className="flex items-start justify-between"><Icon className={`h-5 w-5 ${selected ? 'text-[#315a36]' : 'text-[#8c9789]'}`} />{selected && <Check className="h-4 w-4 text-[#315a36]" />}</span>
-                    <span className="mt-3 block text-sm font-bold text-[#344635]">{title}</span>
-                    <span className="mt-1 block text-[11px] leading-4 text-[#7b8679]">{detail}</span>
-                  </button>;
-                })}
-              </div>
+              {paymentSettings && !abaPaywayEnabled && <p role="alert" className="mb-3 border border-[#e9c5bd] bg-[#fff3ef] px-4 py-3 text-sm text-[#9a4034]">ABA PayWay is not configured or available right now. Please try again later.</p>}
+              {abaPaywayEnabled && <div className="min-h-28 max-w-md border border-[#315a36] bg-[#f1f5ed] p-4">
+                <span className="flex items-start justify-between"><Landmark className="h-5 w-5 text-[#315a36]" /><Check className="h-4 w-4 text-[#315a36]" /></span>
+                <span className="mt-3 block text-sm font-bold text-[#344635]">ABA PayWay</span>
+                <span className="mt-1 block text-[11px] leading-4 text-[#7b8679]">Hosted checkout with payment options enabled for the ABA merchant account.</span>
+              </div>}
 
-              {effectivePaymentMethod === 'CARD' && <div className="mt-4 flex items-start gap-3 border-l-2 border-[#557b52] bg-[#f1f5ed] px-4 py-3 text-xs text-[#5d6b5e]"><LockKeyhole className="h-4 w-4 shrink-0 text-[#315a36]" /><p><strong className="text-[#344635]">Secure card payment.</strong> You’ll continue to Stripe’s hosted checkout to enter card details. FarmCraft never stores your card number.</p></div>}
-              {effectivePaymentMethod === 'BANK' && <label className="mt-4 block max-w-md text-xs font-bold text-[#536453]">Transfer reference
-                <input required maxLength={100} value={bankReference} onChange={(event) => setBankReference(event.target.value)} placeholder="Reference from your bank transfer" className="mt-2 h-11 w-full border border-[#dfe5db] bg-white px-3 text-sm font-medium outline-none placeholder:font-normal focus:border-[#557b52]" />
-              </label>}
-              {effectivePaymentMethod === 'COD' && <p className="mt-4 flex items-center gap-2 text-xs text-[#5d6b5e]"><PackageCheck className="h-4 w-4 text-[#557b52]" /> Have your payment ready when the grower’s delivery arrives.</p>}
-              {effectivePaymentMethod === 'KHQR' && !khqrPayment && <p className="mt-4 flex items-center gap-2 text-xs text-[#5d6b5e]"><ShieldCheck className="h-4 w-4 text-[#557b52]" /> A unique QR will be generated using the saved order total. Payment is confirmed by Bakong, not by the browser.</p>}
-              {effectivePaymentMethod === 'KHQR' && khqrPayment && (
-                <div className="mt-5 flex flex-col items-center gap-3 border border-[#dfe5db] bg-white p-5 text-center">
-                  <p className="text-sm font-bold text-[#344635]">Scan with a Bakong or KHQR-enabled banking app</p>
-                  <img
-                    src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(khqrPayment.qrSvg)}`}
-                    alt="Bakong KHQR payment code"
-                    className="h-64 w-64 max-w-full"
-                  />
-                  <p className="text-sm font-bold text-[#24392b]">{khqrPayment.currency} {Number(khqrPayment.amount).toFixed(2)}</p>
-                  <p role="status" className="text-xs text-[#718071]">
-                    {khqrStatus === 'PENDING' ? 'Waiting for Bakong to confirm your payment…' : khqrStatus === 'FAILED' ? 'Bakong could not complete this payment. Generate a new QR or choose another payment method.' : `Payment status: ${khqrStatus}. Generate a new QR or choose another payment method.`}
-                  </p>
-                  <p className="break-all text-[10px] text-[#899286]">Payment reference: {khqrPayment.md5}</p>
-                </div>
-              )}
+              {abaPaywayEnabled && <p className="mt-4 flex items-center gap-2 text-xs text-[#5d6b5e]"><ShieldCheck className="h-4 w-4 text-[#557b52]" /> FarmCraft confirms the order only after ABA verifies the transaction.</p>}
             </section>
             {errorMessage && <p role="alert" className="border border-[#e9c5bd] bg-[#fff3ef] px-4 py-3 text-sm text-[#9a4034]">{errorMessage}</p>}
           </div>
@@ -310,8 +216,8 @@ export const CheckoutPage = () => {
               <div className="flex items-baseline justify-between border-t border-[#edf0ea] pt-3 text-base font-bold text-[#24392b]"><span>Estimated total</span><span className="text-xl">${subtotal.toFixed(2)}</span></div>
               <p className="text-[11px] leading-4 text-[#899286]">Delivery charges, if applicable, are confirmed with your farm before dispatch.</p>
             </div>
-            <button type="submit" disabled={isSubmitting || orderCreationUncertain || !orderLines.length || !selectedAddressId || !paymentSettings || !availablePaymentOptions.length || khqrStatus === 'PAID'} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 bg-[#285331] px-4 text-sm font-bold text-white transition hover:bg-[#1c4228] disabled:cursor-not-allowed disabled:bg-[#9aa69a]">
-              {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing order</> : <>{khqrPayment && khqrStatus === 'PENDING' ? 'Check payment now' : khqrPayment ? 'Generate new QR' : 'Place order'} <ShieldCheck className="h-4 w-4" /></>}
+            <button type="submit" disabled={isSubmitting || orderCreationUncertain || !orderLines.length || !selectedAddressId || !abaPaywayEnabled} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 bg-[#285331] px-4 text-sm font-bold text-white transition hover:bg-[#1c4228] disabled:cursor-not-allowed disabled:bg-[#9aa69a]">
+              {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Opening ABA PayWay</> : <>Continue to ABA PayWay <ShieldCheck className="h-4 w-4" /></>}
             </button>
             {orderCreationUncertain && <p role="alert" className="mt-3 text-xs text-[#9a4034]">Order creation could not be confirmed. The checkout is locked to prevent a duplicate; check your orders or contact support.</p>}
             <p className="mt-3 text-center text-[11px] text-[#899286]">Your order details are encrypted and protected.</p>

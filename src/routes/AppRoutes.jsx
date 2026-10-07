@@ -17,6 +17,7 @@ import { ProductDetailPage } from '../pages/ProductDetailPage';
 import { CartPage } from '../pages/CartPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 import { OrderSuccessPage } from '../pages/OrderSuccessPage';
+import { AbaPaywayReturnPage } from '../pages/AbaPaywayReturnPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
@@ -220,6 +221,7 @@ export const AppRoutes = () => {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<ProtectedRoute allowedRoles={['BUYER']}><CheckoutPage /></ProtectedRoute>} />
         <Route path="/order-success/:id" element={<ProtectedRoute allowedRoles={['BUYER']}><OrderSuccessPage /></ProtectedRoute>} />
+        <Route path="/payment/aba/return" element={<ProtectedRoute allowedRoles={['BUYER']}><AbaPaywayReturnPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       </Route>
 

@@ -6,6 +6,10 @@ export { createOrderAPI };
 
 export const createCardCheckoutAPI = (orderId) =>
 	requestAPI(API_ENDPOINTS.payments.checkout(orderId), { method: 'POST' });
+export const createAbaPaywayCheckoutAPI = (orderId) =>
+	requestAPI(API_ENDPOINTS.payments.abaPayway(orderId), { method: 'POST' });
+export const verifyAbaPaywayPaymentAPI = (orderId) =>
+	requestAPI(API_ENDPOINTS.payments.verifyAbaPayway(orderId), { method: 'POST' });
 export const createKhqrPaymentAPI = (orderId) =>
 	requestAPI(API_ENDPOINTS.payments.khqr(orderId), { method: 'POST' });
 export const verifyKhqrPaymentAPI = (orderId) =>

@@ -50,6 +50,8 @@ export const API_ENDPOINTS = {
 	},
 	payments: {
 		checkout: (orderId) => `/api/payments/checkout/${encodeURIComponent(orderId)}`,
+		abaPayway: (orderId) => `/api/payments/aba/${encodeURIComponent(orderId)}`,
+		verifyAbaPayway: (orderId) => `/api/payments/aba/${encodeURIComponent(orderId)}/verify`,
 		khqr: (orderId) => `/api/payments/khqr/${encodeURIComponent(orderId)}`,
 		verifyKhqr: (orderId) => `/api/payments/khqr/${encodeURIComponent(orderId)}/verify`,
 		cod: (orderId) => `/api/payments/cod/${encodeURIComponent(orderId)}`,
@@ -69,6 +71,9 @@ export const API_ENDPOINTS = {
 		byId: (id) => `/api/stock-movements/${encodeURIComponent(id)}`,
 		byProduct: (productId) => `/api/stock-movements/product/${encodeURIComponent(productId)}`,
 		bySupplier: (supplierId) => `/api/stock-movements/supplier/${encodeURIComponent(supplierId)}`,
+	},
+	sellerDashboard: {
+		overview: '/api/seller/dashboard/overview',
 	},
 	reviews: {
 		root: '/api/reviews',
