@@ -8,6 +8,7 @@ import com.booot.farm_craftmarket.dto.response.PlatformSettingsDto;
 import com.booot.farm_craftmarket.entity.PlatformSettingsEntity;
 import com.booot.farm_craftmarket.enums.payments.PaymentMethod;
 import com.booot.farm_craftmarket.repository.PlatformSettingsRepository;
+import com.booot.farm_craftmarket.service.AbaPaywayClient;
 import com.booot.farm_craftmarket.service.PlatformSettingsService;
 import lombok.RequiredArgsConstructor;
 
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PlatformSettingsServiceImplement implements PlatformSettingsService {
     private final PlatformSettingsRepository settingsRepository;
+    private final AbaPaywayClient abaPaywayClient;
 
     @Override
     @Transactional
@@ -28,27 +30,22 @@ public class PlatformSettingsServiceImplement implements PlatformSettingsService
     @Transactional
     public PlatformSettingsDto updateSettings(PlatformSettingsDto settings) {
         PlatformSettingsEntity entity = getOrCreateSettings();
-        entity.setCardPaymentsEnabled(settings.cardPaymentsEnabled());
-        entity.setKhqrPaymentsEnabled(settings.khqrPaymentsEnabled());
-        entity.setBankTransferEnabled(settings.bankTransferEnabled());
-        entity.setCashOnDeliveryEnabled(settings.cashOnDeliveryEnabled());
+        entity.setAbaPaywayPaymentsEnabled(settings.abaPaywayPaymentsEnabled());
+        entity.setCardPaymentsEnabled(false);
+        entity.setKhqrPaymentsEnabled(false);
+        entity.setBankTransferEnabled(false);
+        entity.setCashOnDeliveryEnabled(false);
         return toDto(settingsRepository.save(entity));
     }
 
 
     @Override
     public void assertPaymentEnabled(PaymentMethod method) {
-        PlatformSettingsDto settings = getSettings();
-        boolean enabled = switch (method) {
-            case CARD -> settings.cardPaymentsEnabled();
-            case KHQR_BAKONG -> settings.khqrPaymentsEnabled();
-            case BANK_TRANSFER -> settings.bankTransferEnabled();
-            case CASH_ON_DELIVERY -> settings.cashOnDeliveryEnabled();
-        };
-
-        if (!enabled) {
+        if (method != PaymentMethod.ABA_PAYWAY || !abaPaywayClient.isConfigured()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "This payment method is currently unavailable");
+                    method == PaymentMethod.ABA_PAYWAY
+                            ? "ABA PayWay is not configured. Check the backend merchant credentials, RSA public key, and callback URL."
+                            : "Only ABA PayWay payments are supported");
         }
     }
 
@@ -59,9 +56,10 @@ public class PlatformSettingsServiceImplement implements PlatformSettingsService
 
     private PlatformSettingsDto toDto(PlatformSettingsEntity entity) {
         return new PlatformSettingsDto(
-                entity.isCardPaymentsEnabled(),
-                entity.isKhqrPaymentsEnabled(),
-                entity.isBankTransferEnabled(),
-                entity.isCashOnDeliveryEnabled());
+                false,
+                abaPaywayClient.isConfigured(),
+                false,
+                false,
+                false);
     }
 }

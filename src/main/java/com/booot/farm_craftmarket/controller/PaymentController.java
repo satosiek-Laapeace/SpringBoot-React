@@ -1,6 +1,7 @@
 package com.booot.farm_craftmarket.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.booot.farm_craftmarket.dto.response.PaymentResponseDto;
 import com.booot.farm_craftmarket.dto.response.KhqrPaymentResponseDto;
 import com.booot.farm_craftmarket.dto.response.KhqrPaymentStatusResponseDto;
+import com.booot.farm_craftmarket.dto.response.AbaPaywayCheckoutDto;
 import com.booot.farm_craftmarket.mapping.IsAdmin;
 import com.booot.farm_craftmarket.mapping.IsBuyer;
 import com.booot.farm_craftmarket.security.CustomUserDetailService.AppUser;
@@ -42,7 +44,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    @Operation(summary = "Pay an order by card (buyer only)")
+    @Hidden
     @PostMapping("/checkout/{orderId}")
     @IsBuyer
     public ResponseEntity<CheckoutResponse> checkout(
@@ -52,7 +54,34 @@ public class PaymentController {
                 new CheckoutResponse(paymentService.createCheckout(user.getId(), orderId)));
     }
 
-    @Operation(summary = "Create a Bakong KHQR for an order (buyer only)")
+    @Operation(summary = "Start an ABA PayWay checkout (buyer only)")
+    @PostMapping("/aba/{orderId}")
+    @IsBuyer
+    public ResponseEntity<AbaPaywayCheckoutDto> abaPaywayCheckout(
+            @AuthenticationPrincipal AppUser user,
+            @PathVariable Long orderId) {
+        return ResponseEntity.ok(paymentService.createAbaPaywayCheckout(user.getId(), orderId));
+    }
+
+    @Operation(summary = "Verify an ABA PayWay payment (buyer only)")
+    @PostMapping("/aba/{orderId}/verify")
+    @IsBuyer
+    public ResponseEntity<PaymentResponseDto> verifyAbaPayway(
+            @AuthenticationPrincipal AppUser user,
+            @PathVariable Long orderId) {
+        return ResponseEntity.ok(paymentService.verifyAbaPaywayPayment(user.getId(), orderId));
+    }
+
+    @Hidden
+    @PostMapping({"/aba/return", "/payway/callback"})
+    public ResponseEntity<Void> abaPaywayReturn(
+            @RequestBody Map<String, Object> payload,
+            @RequestHeader(value = "X-PayWay-Hmac-Sha512", required = false) String signature) {
+        paymentService.handleAbaPaywayCallback(payload, signature);
+        return ResponseEntity.ok().build();
+    }
+
+    @Hidden
     @PostMapping("/khqr/{orderId}")
     @IsBuyer
     public ResponseEntity<KhqrPaymentResponseDto> createKhqr(
@@ -61,7 +90,7 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.createKhqrPayment(user.getId(), orderId));
     }
 
-    @Operation(summary = "Verify a Bakong KHQR payment for an order (buyer only)")
+    @Hidden
     @PostMapping("/khqr/{orderId}/verify")
     @IsBuyer
     public ResponseEntity<KhqrPaymentStatusResponseDto> verifyKhqr(
@@ -70,7 +99,7 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.verifyKhqrPayment(user.getId(), orderId));
     }
 
-    @Operation(summary = "Choose cash on delivery (buyer only)")
+    @Hidden
     @PostMapping("/cod/{orderId}")
     @IsBuyer
     public ResponseEntity<PaymentResponseDto> cashOnDelivery(
@@ -79,7 +108,7 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.createCashOnDelivery(user.getId(), orderId));
     }
 
-    @Operation(summary = "Pay by bank transfer (buyer only)")
+    @Hidden
     @PostMapping("/bank-transfer/{orderId}")
     @IsBuyer
     public ResponseEntity<PaymentResponseDto> bankTransfer(
@@ -90,7 +119,7 @@ public class PaymentController {
                 paymentService.createBankTransfer(user.getId(), orderId, reference));
     }
 
-    @Operation(summary = "Confirm a bank transfer or cash payment (admin only)")
+    @Hidden
     @PatchMapping("/order/{orderId}/paid")
     @IsAdmin
     public ResponseEntity<PaymentResponseDto> markPaid(@PathVariable Long orderId) {

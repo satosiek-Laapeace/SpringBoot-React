@@ -21,14 +21,17 @@ public class PlatformSettingsEntity {
     private Long id = SETTINGS_ID;
 
     @Column(name = "card_payments_enabled", nullable = false)
-    private boolean cardPaymentsEnabled = true;
+    private boolean cardPaymentsEnabled;
+
+    @Column(name = "aba_payway_payments_enabled", nullable = false, columnDefinition = "boolean default false")
+    private boolean abaPaywayPaymentsEnabled;
 
     @Column(name = "khqr_payments_enabled", nullable = false)
-    private boolean khqrPaymentsEnabled = true;
+    private boolean khqrPaymentsEnabled;
 
     @Column(name = "bank_transfer_enabled", nullable = false)
-    private boolean bankTransferEnabled = true;
+    private boolean bankTransferEnabled;
 
     @Column(name = "cash_on_delivery_enabled", nullable = false)
-    private boolean cashOnDeliveryEnabled = true;
+    private boolean cashOnDeliveryEnabled;
 }

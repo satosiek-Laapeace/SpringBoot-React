@@ -1,6 +1,5 @@
 package com.booot.farm_craftmarket.service.implement;
 
-import com.booot.farm_craftmarket.service.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,6 +7,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import com.booot.farm_craftmarket.service.EmailService;
 
 @Service
 public class EmailServiceImplement implements EmailService {
@@ -18,7 +19,7 @@ public class EmailServiceImplement implements EmailService {
     private final String from;
 
     public EmailServiceImplement(JavaMailSender mailSender,
-                                 @Value("${spring.mail.username}") String from) {
+                                @Value("${spring.mail.username}") String from) {
         this.mailSender = mailSender;
         this.from = from;
     }

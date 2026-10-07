@@ -41,6 +41,9 @@ public class PaymentEntity {
     @Column(name = "transaction_id")
     private String transactionId;
 
+    @Column(name = "merchant_reference", length = 50, unique = true)
+    private String merchantReference;
+
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 

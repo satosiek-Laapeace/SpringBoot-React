@@ -12,4 +12,3 @@ public interface PlatformSettingsService {
     void assertPaymentEnabled(PaymentMethod method);
 
 }
-

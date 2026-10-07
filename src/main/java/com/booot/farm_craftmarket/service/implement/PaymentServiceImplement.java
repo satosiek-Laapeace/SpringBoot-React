@@ -6,6 +6,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.booot.farm_craftmarket.dto.response.KhqrPaymentResponseDto;
 import com.booot.farm_craftmarket.dto.response.KhqrPaymentStatusResponseDto;
 import com.booot.farm_craftmarket.dto.response.PaymentResponseDto;
+import com.booot.farm_craftmarket.dto.response.AbaPaywayCheckoutDto;
 import com.booot.farm_craftmarket.entity.OrderEntity;
 import com.booot.farm_craftmarket.entity.PaymentEntity;
 import com.booot.farm_craftmarket.enums.orders.OrderStatus;
@@ -37,9 +39,10 @@ import com.booot.farm_craftmarket.exception.ResourceNotFoundException;
 import com.booot.farm_craftmarket.repository.OrderRepository;
 import com.booot.farm_craftmarket.repository.PaymentRepository;
 import com.booot.farm_craftmarket.service.KhqrSvgService;
+import com.booot.farm_craftmarket.service.AbaPaywayClient;
 import com.booot.farm_craftmarket.service.PaymentService;
 import com.booot.farm_craftmarket.service.PlatformSettingsService;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
@@ -67,6 +70,7 @@ public class PaymentServiceImplement implements PaymentService {
     private final KhqrSvgService khqrSvgService;
     private final PlatformSettingsService platformSettingsService;
     private final RestTemplate bakongRestTemplate;
+    private final AbaPaywayClient abaPaywayClient;
 
     @Value("${stripe.secret-key:}") private String secretKey;
     @Value("${stripe.webhook-secret:}") private String webhookSecret;
@@ -84,16 +88,77 @@ public class PaymentServiceImplement implements PaymentService {
             OrderRepository orderRepository,
             PaymentRepository paymentRepository,
             KhqrSvgService khqrSvgService,
-            PlatformSettingsService platformSettingsService) {
+            PlatformSettingsService platformSettingsService,
+            AbaPaywayClient abaPaywayClient) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.khqrSvgService = khqrSvgService;
         this.platformSettingsService = platformSettingsService;
+        this.abaPaywayClient = abaPaywayClient;
 
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(5000);
         requestFactory.setReadTimeout(8000);
         this.bakongRestTemplate = new RestTemplate(requestFactory);
+    }
+
+    @Override
+    @Transactional
+    public AbaPaywayCheckoutDto createAbaPaywayCheckout(Long userId, Long orderId) {
+        platformSettingsService.assertPaymentEnabled(PaymentMethod.ABA_PAYWAY);
+        OrderEntity order = getPayableOrder(userId, orderId);
+        cancelOldPending(orderId);
+        String merchantReference = "FC"
+                + Long.toString(orderId, 36).toUpperCase()
+                + "-"
+                + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        PaymentEntity payment = savePending(
+                orderId, order, PaymentMethod.ABA_PAYWAY, null);
+        payment.setMerchantReference(merchantReference);
+        payment.setExpiresAt(LocalDateTime.now(ZoneOffset.UTC).plusHours(24));
+        paymentRepository.save(payment);
+
+        AbaPaywayClient.PaymentLink link = abaPaywayClient.createPaymentLink(
+                order.getTotalAmount(), merchantReference, "FarmCraft order #" + orderId);
+        payment.setExpiresAt(link.expiresAt());
+        paymentRepository.save(payment);
+        return new AbaPaywayCheckoutDto(link.url());
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDto verifyAbaPaywayPayment(Long userId, Long orderId) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_PREFIX + orderId));
+        if (!order.getBuyerId().equals(userId)) {
+            throw new AccessDeniedException("Not your order");
+        }
+        PaymentEntity payment = findAbaPaywayPayment(orderId);
+        if (payment.getTransactionId() != null) {
+            verifyAndApplyAbaPaywayStatus(payment, false);
+        }
+        return toDto(payment);
+    }
+
+    @Override
+    @Transactional
+    public void handleAbaPaywayCallback(Map<String, Object> payload, String signature) {
+        if (payload.containsKey("merchant_ref_no")) {
+            handleAbaPaywayPaymentLinkCallback(payload);
+            return;
+        }
+        abaPaywayClient.validateCallbackSignature(payload, signature);
+        Object transactionIdValue = payload.get("tran_id");
+        if (transactionIdValue == null || transactionIdValue.toString().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "ABA PayWay callback is missing its transaction ID");
+        }
+        paymentRepository.findByTransactionId(transactionIdValue.toString())
+                .filter(payment -> payment.getMethod() == PaymentMethod.ABA_PAYWAY)
+                .ifPresentOrElse(
+                        payment -> verifyAndApplyAbaPaywayStatus(payment, true),
+                        () -> log.warn("No ABA PayWay payment found for transaction {}",
+                                transactionIdValue));
     }
 
     @Override
@@ -315,7 +380,8 @@ public class PaymentServiceImplement implements PaymentService {
         PaymentEntity payment = paymentRepository.findByOrderIdOrderByIdDesc(orderId).stream()
                 .filter(p -> p.getStatus() == PaymentStatus.PENDING)
                 .filter(p -> p.getMethod() != PaymentMethod.CARD
-                        && p.getMethod() != PaymentMethod.KHQR_BAKONG)
+                        && p.getMethod() != PaymentMethod.KHQR_BAKONG
+                        && p.getMethod() != PaymentMethod.ABA_PAYWAY)
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No pending cash or bank-transfer payment for order " + orderId));
@@ -351,7 +417,84 @@ public class PaymentServiceImplement implements PaymentService {
         if (paymentRepository.existsByOrderIdAndStatus(orderId, PaymentStatus.PAID)) {
             throw new IllegalStateException("Order is already paid");
         }
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        boolean abaPaymentInProgress = paymentRepository.findByOrderIdOrderByIdDesc(orderId).stream()
+                .anyMatch(payment -> payment.getMethod() == PaymentMethod.ABA_PAYWAY
+                        && payment.getStatus() == PaymentStatus.PENDING
+                        && payment.getExpiresAt() != null
+                        && payment.getExpiresAt().isAfter(now));
+        if (abaPaymentInProgress) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "An ABA PayWay payment is already in progress for this order");
+        }
         return order;
+    }
+
+    private PaymentEntity findAbaPaywayPayment(Long orderId) {
+        return paymentRepository.findByOrderIdOrderByIdDesc(orderId).stream()
+                .filter(payment -> payment.getMethod() == PaymentMethod.ABA_PAYWAY)
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No ABA PayWay payment found for order " + orderId));
+    }
+
+    private void verifyAndApplyAbaPaywayStatus(PaymentEntity payment, boolean processCancelled) {
+        if (payment.getStatus() != PaymentStatus.PENDING
+                && !(processCancelled && payment.getStatus() == PaymentStatus.CANCELLED)) {
+            return;
+        }
+        if (payment.getTransactionId() == null || payment.getTransactionId().isBlank()) {
+            return;
+        }
+        PaymentStatus verifiedStatus =
+                abaPaywayClient.verifyTransaction(payment.getTransactionId(), payment.getAmount());
+        if (verifiedStatus == PaymentStatus.PAID) {
+            if (payment.getStatus() == PaymentStatus.CANCELLED) {
+                log.warn("ABA PayWay reports a paid transaction {} after its local payment was cancelled",
+                        payment.getTransactionId());
+            }
+            completePayment(payment);
+            return;
+        }
+        boolean expired = payment.getExpiresAt() != null
+                && payment.getExpiresAt().isBefore(LocalDateTime.now(ZoneOffset.UTC));
+        if (payment.getStatus() == PaymentStatus.PENDING && expired
+                && verifiedStatus == PaymentStatus.PENDING) {
+            payment.setStatus(PaymentStatus.CANCELLED);
+            paymentRepository.save(payment);
+            return;
+        }
+        if (payment.getStatus() == PaymentStatus.PENDING
+                && verifiedStatus != PaymentStatus.PENDING) {
+            payment.setStatus(verifiedStatus);
+            paymentRepository.save(payment);
+        }
+    }
+
+    private void handleAbaPaywayPaymentLinkCallback(Map<String, Object> payload) {
+        String providerStatus = String.valueOf(payload.getOrDefault("status", ""));
+        String transactionId = String.valueOf(payload.getOrDefault("tran_id", ""));
+        String merchantReference = String.valueOf(payload.getOrDefault("merchant_ref_no", ""));
+        if (!"00".equals(providerStatus)) {
+            log.warn("ABA PayWay payment-link callback reported status {}", providerStatus);
+            return;
+        }
+        if (transactionId.isBlank() || merchantReference.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "ABA PayWay payment-link callback is missing its transaction or merchant reference");
+        }
+        PaymentEntity payment = paymentRepository.findByMerchantReference(merchantReference)
+                .filter(candidate -> candidate.getMethod() == PaymentMethod.ABA_PAYWAY)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "ABA PayWay payment-link reference was not found"));
+        if (payment.getTransactionId() != null
+                && !payment.getTransactionId().equals(transactionId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "ABA PayWay transaction does not match the payment-link reference");
+        }
+        payment.setTransactionId(transactionId);
+        paymentRepository.save(payment);
+        verifyAndApplyAbaPaywayStatus(payment, true);
     }
 
     private void cancelOldPending(Long orderId) {

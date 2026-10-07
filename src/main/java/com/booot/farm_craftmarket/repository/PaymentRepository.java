@@ -13,6 +13,8 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
 
     Optional<PaymentEntity> findByTransactionId(String transactionId);
 
+    Optional<PaymentEntity> findByMerchantReference(String merchantReference);
+
     boolean existsByOrderIdAndStatus(Long orderId, PaymentStatus status);
 
     List<PaymentEntity> findByOrderIdOrderByIdDesc(Long orderId);
